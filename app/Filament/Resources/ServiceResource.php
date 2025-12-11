@@ -15,70 +15,84 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\IconColumn;
 
-class ServiceResource extends Resource
-{
+class ServiceResource extends Resource {
     protected static ?string $model = Service::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    public static function form(Form $form): Form
-    {
-       return $form
-    ->schema([
-        Select::make('barbershop_id')
-            ->relationship('barbershop', 'name')
+    public static function form( Form $form ): Form {
+        return $form
+        ->schema( [
+            Select::make( 'barbershop_id' )
+            ->relationship( 'barbershop', 'name' )
             ->required()
-            ->label('Pertence à Barbearia'),
+            ->label( 'Pertence à Barbearia' ),
 
-        TextInput::make('name')
+            TextInput::make( 'name' )
             ->required()
-            ->label('Nome do Serviço (ex: Corte)'),
+            ->label( 'Nome do Serviço (ex: Corte)' ),
 
-        TextInput::make('price')
+            TextInput::make( 'price' )
             ->numeric()
-            ->prefix('R$')
+            ->prefix( 'R$' )
             ->required(),
 
-        TextInput::make('duration_minutes')
+            TextInput::make( 'duration_minutes' )
             ->numeric()
-            ->default(30)
-            ->label('Duração (minutos)'),
-    ]);
+            ->default( 30 )
+            ->label( 'Duração (minutos)' ),
+        ] );
     }
 
-    public static function table(Table $table): Table
-    {
+    public static function table( Table $table ): Table {
         return $table
-            ->columns([
-                //
-            ])
-            ->filters([
-                //
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
+        ->columns( [
+            TextColumn::make( 'name' )
+            ->label( 'Serviço' )
+            ->searchable(),
+
+            TextColumn::make( 'barbershop.name' )
+            ->label( 'Barbearia' ),
+
+            TextColumn::make( 'price' )
+            ->money( 'BRL' ) // Formata automático como R$
+            ->label( 'Preço' ),
+
+            TextColumn::make( 'duration_minutes' )
+            ->suffix( ' min' )
+            ->label( 'Duração' ),
+
+            IconColumn::make( 'is_active' )
+            ->boolean() // Mostra um ✅ ou ❌
+            ->label( 'Ativo?' ),
+        ] )
+        ->filters( [
+            //
+        ] )
+        ->actions( [
+            Tables\Actions\EditAction::make(),
+        ] )
+        ->bulkActions( [
+            Tables\Actions\BulkActionGroup::make( [
+                Tables\Actions\DeleteBulkAction::make(),
+            ] ),
+        ] );
     }
 
-    public static function getRelations(): array
-    {
+    public static function getRelations(): array {
         return [
             //
         ];
     }
 
-    public static function getPages(): array
-    {
+    public static function getPages(): array {
         return [
-            'index' => Pages\ListServices::route('/'),
-            'create' => Pages\CreateService::route('/create'),
-            'edit' => Pages\EditService::route('/{record}/edit'),
+            'index' => Pages\ListServices::route( '/' ),
+            'create' => Pages\CreateService::route( '/create' ),
+            'edit' => Pages\EditService::route( '/{record}/edit' ),
         ];
     }
 }

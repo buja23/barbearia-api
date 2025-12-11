@@ -4,13 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo; // <--- Importante
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany; // <--- ADICIONE ISSO
 
 class Barbershop extends Model
 {
     use HasFactory;
 
-    // Libera esses campos para serem salvos pelo Filament
     protected $fillable = [
         'user_id',
         'name',
@@ -20,9 +20,13 @@ class Barbershop extends Model
         'logo_path',
     ];
 
-    // Essa é a função que o Filament estava procurando e não achou!
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function services(): HasMany
+    {
+        return $this->hasMany(Service::class);
     }
 }

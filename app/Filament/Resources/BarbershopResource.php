@@ -16,6 +16,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Set;
 use Illuminate\Support\Str;
+use Filament\Tables\Columns\TextColumn;
 
 class BarbershopResource extends Resource {
     protected static ?string $model = Barbershop::class;
@@ -53,7 +54,23 @@ class BarbershopResource extends Resource {
     public static function table( Table $table ): Table {
         return $table
         ->columns( [
-            //
+            TextColumn::make( 'name' )
+            ->label( 'Nome da Barbearia' )
+            ->searchable()
+            ->sortable(),
+
+            TextColumn::make( 'slug' )
+            ->label( 'Link (Slug)' )
+            ->copyable(),
+
+            TextColumn::make( 'user.name' )
+            ->label( 'Dono' )
+            ->sortable(),
+
+            TextColumn::make( 'created_at' )
+            ->dateTime( 'd/m/Y H:i' )
+            ->label( 'Criado em' )
+            ->sortable(),
         ] )
         ->filters( [
             //
