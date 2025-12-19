@@ -1,5 +1,4 @@
 # 💈 Barbearia API (MVP)
-
 Backend e Painel Administrativo do SaaS de Barbearias "Barba Branca".
 Este sistema gerencia o Clube de Assinaturas, Agendamentos e Configurações das barbearias parceiras.
 
