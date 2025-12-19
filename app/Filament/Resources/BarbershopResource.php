@@ -18,6 +18,7 @@ use Filament\Forms\Set;
 use Illuminate\Support\Str;
 use Filament\Tables\Columns\TextColumn;
 
+
 class BarbershopResource extends Resource {
     protected static ?string $model = Barbershop::class;
 
@@ -48,6 +49,11 @@ class BarbershopResource extends Resource {
 
             TextInput::make( 'address' )
             ->label( 'Endereço' ),
+
+            Hidden::make('user_id')
+            ->default(fn () => auth()->id())
+            ->required(),
+
         ] );
     }
 
@@ -98,4 +104,10 @@ class BarbershopResource extends Resource {
             'edit' => Pages\EditBarbershop::route( '/{record}/edit' ),
         ];
     }
+
+    public static function getEloquentQuery(): Builder{
+        return parent::getEloquentQuery()
+            ->where('user_id', auth()->id());
+    }
+
 }

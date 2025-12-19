@@ -15,8 +15,10 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Toggle;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\ToggleColumn;
 
 class ServiceResource extends Resource {
     protected static ?string $model = Service::class;
@@ -44,6 +46,10 @@ class ServiceResource extends Resource {
             ->numeric()
             ->default( 30 )
             ->label( 'Duração (minutos)' ),
+
+            Toggle::make( 'is_active' )
+            ->label( 'Ativo?' )
+            ->default(true),
         ] );
     }
 
@@ -65,8 +71,7 @@ class ServiceResource extends Resource {
             ->suffix( ' min' )
             ->label( 'Duração' ),
 
-            IconColumn::make( 'is_active' )
-            ->boolean() // Mostra um ✅ ou ❌
+            ToggleColumn::make( 'is_active' )
             ->label( 'Ativo?' ),
         ] )
         ->filters( [
