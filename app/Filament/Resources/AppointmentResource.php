@@ -81,10 +81,13 @@ class AppointmentResource extends Resource
             ->columns([
                 // 1. Cliente (Pega direto da coluna client_name)
                 // Se você quiser pegar do usuário logado, troque por 'user.name'
-                TextColumn::make('client_name')
+                TextColumn::make('cliente')
                     ->label('Cliente')
-                    ->searchable()
-                    ->sortable(),
+                    ->getStateUsing(fn ($record) =>
+                        $record->client_name ?? $record->user?->name
+                    )
+                    ->searchable(),
+
 
                 // 2. Barbeiro (Pega a relação 'barber' e o campo 'name' dele)
                 // Certifique-se que na tabela 'barbers' a coluna do nome é 'name'
@@ -110,12 +113,14 @@ class AppointmentResource extends Resource
                 // 6. Status
                 TextColumn::make('status')
                     ->badge()
-                    ->color(fn(string $state): string => match ($state) {
-                        'pending', 'pendente'     => 'warning',
-                        'confirmed', 'confirmado' => 'success',
-                        'cancelled', 'cancelado'  => 'danger',
-                        default => 'gray',
+                    ->color(fn (string $state): string => match ($state) {
+                        'pending'   => 'warning',
+                        'confirmed' => 'success',
+                        'completed' => 'primary',
+                        'cancelled' => 'danger',
+                        default     => 'gray',
                     }),
+
             ])
             ->defaultSort('scheduled_at', 'desc') // Ordena do mais recente para o antigo
             ->filters([
