@@ -17,6 +17,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Set;
 use Illuminate\Support\Str;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Forms\Components\Hidden;
 
 
 class BarbershopResource extends Resource {
