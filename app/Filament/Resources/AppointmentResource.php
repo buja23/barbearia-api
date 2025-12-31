@@ -11,8 +11,10 @@ use Filament\Forms\Form;
 use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
+use Filament\Tables\Actions\BulkAction;
+use Illuminate\Database\Eloquent\Collection;
 
 
 class AppointmentResource extends Resource
@@ -84,11 +86,10 @@ class AppointmentResource extends Resource
                 // Se você quiser pegar do usuário logado, troque por 'user.name'
                 TextColumn::make('cliente')
                     ->label('Cliente')
-                    ->getStateUsing(fn ($record) =>
+                    ->getStateUsing(fn($record) =>
                         $record->client_name ?? $record->user?->name
                     )
                     ->searchable(),
-
 
                 // 2. Barbeiro (Pega a relação 'barber' e o campo 'name' dele)
                 // Certifique-se que na tabela 'barbers' a coluna do nome é 'name'
@@ -113,14 +114,17 @@ class AppointmentResource extends Resource
 
                 // 6. Status
                 TextColumn::make('status')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'pending'   => 'warning',
-                        'confirmed' => 'success',
-                        'completed' => 'primary',
-                        'cancelled' => 'danger',
+                    ->badge()                                                        // Isso transforma o texto naquele botãozinho arredondado
+                    ->formatStateUsing(fn(string $state): string => ucfirst($state)) // Deixa a primeira letra maiúscula (pending -> Pending)
+                    ->color(fn(string $state): string => match ($state) {
+                        'pending'   => 'warning', // Amarelo (Atenção)
+                        'confirmed' => 'success', // Verde (Sinal verde/Futuro)
+                        'completed' => 'info',    // Azul (Aqui a mágica! Diferencia do pendente)
+                        'cancelled' => 'danger',  // Vermelho (Erro/Cancelado)
                         default     => 'gray',
-                    }),
+                    })
+                    ->sortable()
+                    ->searchable(),
 
             ])
             ->defaultSort('scheduled_at', 'desc') // Ordena do mais recente para o antigo
@@ -133,6 +137,26 @@ class AppointmentResource extends Resource
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
+                    BulkAction::make('alterarStatus')
+                        ->label('Atualizar Status')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('warning') // Botão amarelo pra chamar atenção
+                        ->requiresConfirmation()
+                        ->form([
+                            \Filament\Forms\Components\Select::make('status')
+                                ->label('Novo Status')
+                                ->options([
+                                    'confirmed' => 'Confirmado',
+                                    'completed' => 'Concluído',
+                                    'cancelled' => 'Cancelado',
+                                ])
+                                ->required(),
+                        ])
+                        ->action(function (Collection $records, array $data): void {
+                            // Atualiza todos os selecionados de uma vez
+                            $records->each(fn($record) => $record->update(['status' => $data['status']]));
+                        })
+                        ->deselectRecordsAfterCompletion(),
                 ]),
             ]);
     }
