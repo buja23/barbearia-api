@@ -4,42 +4,41 @@ namespace App\Filament\Widgets;
 
 use Saade\FilamentFullCalendar\Widgets\FullCalendarWidget;
 use App\Models\Appointment;
+use Carbon\Carbon;
 
 class CalendarWidget extends FullCalendarWidget
 {
-    /**
-     * Busca os eventos no banco de dados dentro do intervalo visível no calendário
-     */
     public function fetchEvents(array $fetchInfo): array
     {
-        return Appointment::query()
-            // Filtra para pegar apenas o que está na tela do usuário (performance)
+        // Busca agendamentos do período visível
+        $agendamentos = Appointment::query()
             ->where('scheduled_at', '>=', $fetchInfo['start'])
             ->where('scheduled_at', '<=', $fetchInfo['end'])
-            ->get()
-            ->map(
-                fn (Appointment $event) => [
-                    'id'    => $event->id,
-                    // Título: "Nome do Cliente - Serviço"
-                    'title' => "{$event->cliente_nome} - {$event->servico}", 
-                    'start' => $event->scheduled_at,
-                    // Se você não tiver data de fim, assume 1 hora de duração
-                    'end'   => $event->scheduled_at->addHour(), 
-                    
-                    // Aqui aplicamos as CORES VISUAIS do seu protótipo
-                    'color' => match ($event->status) {
-                        'pending'   => '#eab308', // Amarelo (Warning)
-                        'confirmed' => '#22c55e', // Verde (Success)
-                        'completed' => '#3b82f6', // Azul (Info)
-                        'cancelled' => '#ef4444', // Vermelho (Danger)
-                        default     => '#6b7280', // Cinza
-                    },
-                    
-                    // Link para abrir a edição ao clicar
-                    'url' => \App\Filament\Resources\AppointmentResource::getUrl('edit', ['record' => $event]),
-                    'shouldOpenUrlInNewTab' => false,
-                ]
-            )
-            ->all();
+            ->get();
+
+        // Agrupa por dia
+        $porDia = $agendamentos->groupBy(function($item) {
+            return Carbon::parse($item->scheduled_at)->format('Y-m-d');
+        });
+
+        $eventosVisuais = [];
+
+        foreach ($porDia as $dia => $lista) {
+            $quantidade = $lista->count();
+            
+            // Lógica: 8 ou mais cortes = Lotado (Vermelho), senão Azul
+            $classeCor = $quantidade >= 8 ? 'bg-evento-vermelho' : 'bg-evento-azul';
+
+            $eventosVisuais[] = [
+                'id' => 'bg-' . $dia,
+                'title' => '', // TÍTULO VAZIO para não escrever nada
+                'start' => $dia,
+                'display' => 'background', // Isso joga o evento para trás do número
+                'classNames' => [$classeCor], // Aplica nossa classe CSS de bolinha
+                'allDay' => true,
+            ];
+        }
+
+        return $eventosVisuais;
     }
 }

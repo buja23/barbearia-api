@@ -17,6 +17,7 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Illuminate\Support\Facades\Blade; 
 use Saade\FilamentFullCalendar\FilamentFullCalendarPlugin;
 
 class AdminPanelProvider extends PanelProvider
@@ -54,17 +55,123 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ]) // <--- O ponto e vírgula estava aqui! Removi ele.
+            ])
             ->plugins([
                 FilamentFullCalendarPlugin::make()
                     ->config([
                         'initialView' => 'dayGridMonth',
                         'headerToolbar' => [
-                            'left' => 'prev,next today',
+                            'left' => 'prev',
                             'center' => 'title',
-                            'right' => 'dayGridMonth,timeGridWeek,timeGridDay'
+                            'right' => 'next',
                         ],
                     ]),
-            ]); // O ponto e vírgula correto é aqui no final de tudo
+            ])
+            ->renderHook(
+                'panels::head.end',
+                fn (): string => Blade::render('
+                <style>
+                    /* 1. Reset e Container */
+                    .fc {
+                        max-width: 380px !important;
+                        margin: 0 auto !important;
+                        font-family: inherit;
+                        background: transparent;
+                    }
+
+                    /* 2. Cabeçalho Minimalista */
+                    .fc-toolbar {
+                        justify-content: center !important;
+                        gap: 20px;
+                        margin-bottom: 20px !important;
+                    }
+                    .fc-toolbar-title {
+                        font-size: 1.1rem !important;
+                        font-weight: 700;
+                        color: white;
+                    }
+                    .fc-button {
+                        background: transparent !important;
+                        border: none !important;
+                        color: #a1a1aa !important;
+                        box-shadow: none !important;
+                    }
+                    .fc-button:hover { color: white !important; }
+
+                    /* 3. Limpeza da Grade */
+                    .fc-theme-standard td, .fc-theme-standard th, .fc-scrollgrid {
+                        border: none !important;
+                    }
+                    .fc-col-header-cell-cushion {
+                        text-transform: uppercase;
+                        font-size: 0.75rem;
+                        font-weight: 500;
+                        color: #71717a; /* Zinc-500 */
+                        text-decoration: none !important;
+                    }
+
+                    /* 4. Células do Dia */
+                    .fc-daygrid-day-frame {
+                        min-height: 40px !important;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        position: relative;
+                    }
+
+                    /* 5. Número do Dia (Fica na frente da bolinha) */
+                    .fc-daygrid-day-top {
+                        justify-content: center;
+                        position: relative;
+                        z-index: 10; 
+                    }
+                    .fc-daygrid-day-number {
+                        width: 32px;
+                        height: 32px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 0.9rem;
+                        font-weight: 500;
+                        color: #e4e4e7; /* Cor do número normal */
+                        text-decoration: none !important;
+                        z-index: 10;
+                    }
+
+                    /* 6. Bolinhas de Fundo (Eventos) */
+                    .fc-bg-event {
+                        opacity: 1 !important;
+                        border-radius: 50%;
+                        width: 32px !important; 
+                        height: 32px !important;
+                        left: 50% !important;
+                        top: 4px !important; /* Ajuste fino vertical */
+                        transform: translateX(-50%) !important;
+                        z-index: 1 !important; /* Fica ATRÁS do número */
+                        cursor: pointer;
+                    }
+                    
+                    /* Tira o texto/título do evento de fundo se aparecer */
+                    .fc-bg-event .fc-event-title { display: none; }
+
+                    /* Cores das Bolinhas */
+                    .bg-evento-azul { background-color: #3b82f6 !important; }
+                    .bg-evento-vermelho { background-color: #ef4444 !important; }
+
+                    /* 7. Destaque "HOJE" (Amarelo) */
+                    .fc-day-today .fc-daygrid-day-number {
+                        background-color: #f59e0b !important;
+                        color: black !important;
+                        border-radius: 50%;
+                        font-weight: bold;
+                    }
+
+                 
+                    .fc .fc-daygrid-day.fc-day-today {
+                        background-color: transparent !important;
+                    }
+                </style>
+                ')
+            );
     }
 }
