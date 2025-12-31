@@ -17,6 +17,7 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Saade\FilamentFullCalendar\FilamentFullCalendarPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -53,6 +54,17 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-            ]);
+            ]) // <--- O ponto e vírgula estava aqui! Removi ele.
+            ->plugins([
+                FilamentFullCalendarPlugin::make()
+                    ->config([
+                        'initialView' => 'dayGridMonth',
+                        'headerToolbar' => [
+                            'left' => 'prev,next today',
+                            'center' => 'title',
+                            'right' => 'dayGridMonth,timeGridWeek,timeGridDay'
+                        ],
+                    ]),
+            ]); // O ponto e vírgula correto é aqui no final de tudo
     }
 }

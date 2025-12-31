@@ -4,6 +4,8 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\AppointmentResource\Pages;
 use App\Models\Appointment;
 use App\Models\Service;
+use Carbon\Carbon;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -11,11 +13,13 @@ use Filament\Forms\Form;
 use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Table;
 use Filament\Tables\Actions\BulkAction;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
-
 
 class AppointmentResource extends Resource
 {
@@ -129,8 +133,65 @@ class AppointmentResource extends Resource
             ])
             ->defaultSort('scheduled_at', 'desc') // Ordena do mais recente para o antigo
             ->filters([
-                //
+                SelectFilter::make('status')
+                    ->label('Filtrar por Status')
+                    ->options([
+                        'pending'   => 'Pendente',
+                        'confirmed' => 'Confirmado',
+                        'completed' => 'Concluído',
+                        'cancelled' => 'Cancelado',
+                    ]),
+
+                // 2. Filtro de Data
+                Filter::make('data_agendamento')
+                    ->form([
+                        DatePicker::make('data_inicial')->label('De'),
+                        DatePicker::make('data_final')->label('Até'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['data_inicial'],
+                                fn(Builder $query, $date) => $query->whereDate('date_time', '>=', $date),
+                            )
+                            ->when(
+                                $data['data_final'],
+                                fn(Builder $query, $date) => $query->whereDate('date_time', '<=', $date),
+                            );
+                    }),
+
+                SelectFilter::make('periodo')
+                    ->label('Período')
+                    ->placeholder('Todo o período') // Opção padrão (sem filtro)
+                    ->options([
+                        'hoje'   => 'Hoje',
+                        'semana' => 'Esta Semana',
+                        'mes'    => 'Este Mês',
+                    ])
+                    ->query(function (Builder $query, array $data) {
+                        if (empty($data['value'])) {
+                            return $query;
+                        }
+
+                        // TROQUE 'scheduled_at' PELO NOME REAL DA SUA COLUNA DE DATA
+                        $colunaData = 'scheduled_at';
+
+                        return match ($data['value']) {
+                            'hoje'   => $query->whereDate($colunaData, Carbon::today()),
+
+                            'semana' => $query->whereBetween($colunaData, [
+                                Carbon::now()->startOfWeek(),
+                                Carbon::now()->endOfWeek(),
+                            ]),
+
+                            'mes'    => $query->whereMonth($colunaData, Carbon::now()->month)
+                                ->whereYear($colunaData, Carbon::now()->year),
+
+                            default  => $query,
+                        };
+                    }),
             ])
+
             ->actions([
                 Tables\Actions\EditAction::make(),
             ])
