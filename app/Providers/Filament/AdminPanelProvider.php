@@ -19,7 +19,6 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Illuminate\Support\Facades\Blade; 
 use Saade\FilamentFullCalendar\FilamentFullCalendarPlugin;
-use Illuminate\Support\Js;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -58,46 +57,25 @@ class AdminPanelProvider extends PanelProvider
                 Authenticate::class,
             ])
             ->plugins([
-            FilamentFullCalendarPlugin::make()
-                ->config([
-                    'initialView' => 'dayGridMonth',
-                    'headerToolbar' => [
-                        'left' => 'prev',
-                        'center' => 'title',
-                        'right' => 'next',
-                    ],
-                    //'selectable' => true,
-                    
-                    // A MÁGICA ACONTECE AQUI:
-                   'dateClick' => new Js("
-                        function(info) {
-                            // 1. Teste de Vida: Vai aparecer uma janela no seu navegador. 
-                            // Se NÃO aparecer, o FullCalendar está travado.
-                            alert('Cliquei no dia: ' + info.dateStr); 
-
-                            // Limpeza visual
-                            document.querySelectorAll('.dia-selecionado').forEach(el => el.classList.remove('dia-selecionado'));
-                            document.querySelectorAll('.fc-highlight').forEach(el => el.remove());
-                            info.dayEl.classList.add('dia-selecionado');
-
-                            // 2. Tentativa Forte de Dispatch (Usando window.Livewire)
-                            if (window.Livewire) {
-                                console.log('Enviando evento para Livewire...');
-                                window.Livewire.dispatch('data-alterada', { date: info.dateStr });
-                            } else {
-                                alert('ERRO CRÍTICO: O Livewire não foi encontrado na página!');
-                            }
-                        }
-                    "),
-                ]),
-        ])
-     ->renderHook(
+                // Carrega o plugin sem configurações conflitantes de clique aqui
+                FilamentFullCalendarPlugin::make()
+                    ->config([
+                        'initialView' => 'dayGridMonth',
+                        'headerToolbar' => [
+                            'left' => 'prev',
+                            'center' => 'title',
+                            'right' => 'next',
+                        ],
+                    ]),
+            ])
+            // AQUI VOLTA O SEU CSS (VISUAL)
+            ->renderHook(
                 'panels::head.end',
                 fn (): string => Blade::render('
                 <style>
-                    /* === 1. Layout Básico e Limpeza === */
+                    /* === 1. Layout Básico === */
                     .fc {
-                        max-width: 380px !important;
+                        max-width: 480px !important; /* Aumentei um pouco para não ficar espremido */
                         margin: 0 auto !important;
                         font-family: inherit;
                         background: transparent;
@@ -108,9 +86,8 @@ class AdminPanelProvider extends PanelProvider
                         margin-bottom: 20px !important;
                     }
                     .fc-toolbar-title {
-                        font-size: 1.1rem !important;
+                        font-size: 1.2rem !important;
                         font-weight: 700;
-                        color: white;
                     }
                     .fc-button {
                         background: transparent !important;
@@ -122,24 +99,14 @@ class AdminPanelProvider extends PanelProvider
                     .fc-theme-standard td, .fc-theme-standard th, .fc-scrollgrid { border: none !important; }
                     .fc-col-header-cell-cushion { color: #71717a; text-decoration: none !important; font-weight: 500; text-transform: uppercase; font-size: 0.75rem; }
 
-                    /* === 2. A CORREÇÃO DO CLIQUE (NUCLEAR) === */
-                    
-                    /* Garante que a Célula do Dia (Frame) seja clicável */
+                    /* === 2. Correção do Clique (Frames Clicáveis) === */
                     .fc-daygrid-day-frame {
                         min-height: 40px !important;
                         position: relative;
                         display: flex;
                         justify-content: center;
                         align-items: center;
-                        cursor: pointer !important; /* Mostra a mãozinha */
-                        pointer-events: auto !important; /* Ativa o clique aqui */
-                        z-index: 1;
-                    }
-
-                    /* Força TODOS os elementos dentro do dia a serem "fantasmas" para o mouse */
-                    /* O clique vai atravessar números, bolinhas, textos e acertar o Frame */
-                    .fc-daygrid-day-frame * {
-                        pointer-events: none !important; 
+                        cursor: pointer !important;
                     }
 
                     /* === 3. Visual das Bolinhas e Números === */
@@ -148,43 +115,29 @@ class AdminPanelProvider extends PanelProvider
                         display: flex; align-items: center; justify-content: center;
                         font-size: 0.9rem; font-weight: 500; color: #e4e4e7;
                         text-decoration: none !important;
-                        z-index: 10; /* Fica na frente visualmente */
+                        z-index: 2;
+                        position: relative;
                     }
 
+                    /* Eventos como bolinhas de fundo */
                     .fc-bg-event {
                         opacity: 1 !important;
                         border-radius: 50%;
                         width: 32px !important; height: 32px !important;
-                        left: 50% !important; top: 50% !important; /* Centraliza absoluto */
+                        left: 50% !important; top: 50% !important;
                         transform: translate(-50%, -50%) !important;
-                        z-index: 5 !important; /* Atrás do número */
+                        z-index: 1 !important;
                     }
                     .fc-bg-event .fc-event-title { display: none; }
                     
                     .bg-evento-azul { background-color: #3b82f6 !important; }
                     .bg-evento-vermelho { background-color: #ef4444 !important; }
 
-                    /* === 4. Feedback Visual de Seleção (Borda Amarela) === */
+                    /* === 4. Seleção (Borda Laranja) === */
                     .dia-selecionado {
-                        box-shadow: inset 0 0 0 3px #f59e0b !important;
-                        border-radius: 8px !important;
-                        background-color: rgba(245, 158, 11, 0.1);
+                        box-shadow: inset 0 0 0 2px #f59e0b !important;
+                        border-radius: 50% !important; /* Borda redonda para combinar */
                     }
-
-                    /* Hoje (Amarelo) */
-                    .fc-day-today .fc-daygrid-day-number {
-                        background-color: #f59e0b !important;
-                        color: black !important;
-                        border-radius: 50%;
-                        font-weight: bold;
-                    }
-                    .fc .fc-daygrid-day.fc-day-today { background-color: transparent !important; }
-
-                    .fc-highlight {
-                    background: rgba(245, 158, 11, 0.2) !important;
-                    box-shadow: inset 0 0 0 2px #f59e0b !important;
-                    border-radius: 8px !important;
-                     }
                 </style>
                 ')
             );
