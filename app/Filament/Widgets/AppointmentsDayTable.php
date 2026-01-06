@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Widgets; // Ajustei o namespace para bater com sua pasta
+namespace App\Filament\Widgets;
 
 use App\Models\Appointment;
 use Filament\Tables;
@@ -8,10 +8,13 @@ use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Livewire\Attributes\On;
 use Carbon\Carbon;
-use Illuminate\Contracts\View\View; // <--- 1. Importante: Adicionamos isso
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
 
-class AppointmentsDayTable extends BaseWidget
+class AppointmentsDayTable extends BaseWidget implements HasForms
 {
+    use InteractsWithForms;
+
     protected static ?int $sort = 2;
     protected int | string | array $columnSpan = 'full';
 
@@ -22,23 +25,37 @@ class AppointmentsDayTable extends BaseWidget
         $this->dataSelecionada = now()->format('Y-m-d');
     }
 
-  #[On('data-alterada')]
-    public function atualizarData($date)
+    // O NOME DO EVENTO TEM QUE SER IGUAL AO DO CALENDÁRIO: 'data-alterada'
+   #[On('data-alterada')] 
+    public function atualizarData($data)
     {
-        $this->dataSelecionada = $date;
+        // Log para provar que chegou
+        Log::info('📥 TABELA RECEBEU:', is_array($data) ? $data : ['valor' => $data]);
+
+        if (is_array($data)) {
+            $this->dataSelecionada = $data['date'] ?? array_values($data)[0];
+        } else {
+            $this->dataSelecionada = $data;
+        }
     }
 
     public function table(Table $table): Table
     {
         return $table
-            ->heading(
-                $this->dataSelecionada
-                ? 'Agendamentos de ' . Carbon::parse($this->dataSelecionada)->format('d/m/Y')
-                : 'Selecione uma data'
-            )
+            ->heading(function () {
+                if (! $this->dataSelecionada) return 'Selecione uma data';
+                try {
+                    return 'Agendamentos de ' . Carbon::parse($this->dataSelecionada)->format('d/m/Y');
+                } catch (\Exception $e) {
+                    return 'Data Inválida';
+                }
+            })
             ->query(
                 Appointment::query()
-                    ->whereDate('scheduled_at', $this->dataSelecionada)
+                    ->when(
+                        $this->dataSelecionada,
+                        fn ($query) => $query->whereDate('scheduled_at', $this->dataSelecionada)
+                    )
                     ->orderBy('scheduled_at', 'asc')
             )
             ->columns([
@@ -49,9 +66,7 @@ class AppointmentsDayTable extends BaseWidget
 
                 Tables\Columns\TextColumn::make('client_name')
                     ->label('Cliente')
-                    ->getStateUsing(function ($record) {
-                        return $record->user_id ? $record->user->name : $record->client_name;
-                    })
+                    ->getStateUsing(fn ($record) => $record->user_id ? $record->user->name : $record->client_name)
                     ->searchable(),
 
                 Tables\Columns\TextColumn::make('total_price')
@@ -72,11 +87,5 @@ class AppointmentsDayTable extends BaseWidget
                 Tables\Actions\EditAction::make(),
             ])
             ->paginated(false);
-    }
-
-    // <--- 2. A CORREÇÃO PRINCIPAL ESTÁ AQUI EMBAIXO:
-    public function render(): View
-    {
-       return view('filament.widgets.appointments-day-table');
     }
 }

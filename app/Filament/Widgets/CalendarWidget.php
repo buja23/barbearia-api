@@ -6,6 +6,7 @@ use Saade\FilamentFullCalendar\Widgets\FullCalendarWidget;
 use App\Models\Appointment;
 use Carbon\Carbon;
 use Illuminate\Support\Js;
+use Illuminate\Support\Facades\Log;
 
 class CalendarWidget extends FullCalendarWidget
 {
@@ -13,6 +14,9 @@ class CalendarWidget extends FullCalendarWidget
 
     public function fetchEvents(array $fetchInfo): array
     {
+        // Esse log você já viu, confirma que carregou
+        Log::info('📅 Widget Carregado.');
+
         $agendamentos = Appointment::query()
             ->where('scheduled_at', '>=', $fetchInfo['start'])
             ->where('scheduled_at', '<=', $fetchInfo['end'])
@@ -40,25 +44,20 @@ class CalendarWidget extends FullCalendarWidget
             'initialView' => 'dayGridMonth',
             'headerToolbar' => ['left' => 'prev', 'center' => 'title', 'right' => 'next'],
             
-            'selectable' => true, // Importante para o cursor
+            // 1. ATIVAR A SELEÇÃO (Para aparecer o quadrado amarelo)
+            'selectable' => true,
             'selectMirror' => true,
-            
-            // Aqui fica APENAS a lógica do clique
-            'dateClick' => new Js(<<<JS
+            'unselectAuto' => true,
+
+            // 2. DISPARO MANUAL (A Força Bruta)
+            // Assim que você selecionar o dia, o JS manda o aviso direto pro sistema.
+            'select' => new Js(<<<JS
                 function(info) {
-                    // 1. Alerta de Debug (remova depois que funcionar)
-                    alert('DATA CLICADA: ' + info.dateStr);
+                    // Log para você conferir no F12
+                    console.log('🚀 JS DISPARANDO DATA:', info.startStr);
 
-                    // 2. Dispara o evento para a tabela
-                    Livewire.dispatch('data-alterada', { date: info.dateStr });
-
-                    // 3. Aplica a classe visual (definida lá no AdminPanelProvider)
-                    document.querySelectorAll('.dia-selecionado').forEach(el => el.classList.remove('dia-selecionado'));
-                    
-                    // Adiciona a classe no elemento de número (para ficar redondo) ou no frame
-                    if (info.dayEl) {
-                        info.dayEl.classList.add('dia-selecionado');
-                    }
+                    // Envia para todo mundo ouvir (Tabela)
+                    Livewire.dispatch('data-alterada', { date: info.startStr });
                 }
             JS),
         ];
