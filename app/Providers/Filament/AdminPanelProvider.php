@@ -51,29 +51,36 @@ class AdminPanelProvider extends PanelProvider
                 // === AQUI MUDOU: Removemos o ->config() para não dar conflito ===
                 FilamentFullCalendarPlugin::make()
             ])
-            ->renderHook(
-                'panels::head.end',
-                fn (): string => Blade::render('
-                <style>
-                    /* Layout */
-                    .fc { max-width: 480px !important; margin: 0 auto !important; font-family: inherit; }
-                    .fc-toolbar { justify-content: center !important; gap: 20px; margin-bottom: 20px !important; }
-                    .fc-toolbar-title { font-size: 1.2rem !important; font-weight: 700; }
-                    .fc-button { background: transparent !important; border: none !important; color: #a1a1aa !important; }
-                    .fc-theme-standard td, .fc-theme-standard th, .fc-scrollgrid { border: none !important; }
+         // ...
+->renderHook(
+    'panels::head.end',
+    fn (): string => Blade::render('
+    <style>
+        /* Layout Básico */
+        .fc { max-width: 480px !important; margin: 0 auto !important; font-family: inherit; }
+        
+        /* === CORREÇÃO CRÍTICA DO CLIQUE === */
+        /* O Frame do dia DEVE ser clicável */
+        .fc-daygrid-day-frame { cursor: pointer !important; pointer-events: auto !important; }
+        
+        /* Os enfeites (números/bolinhas) NÃO podem bloquear o clique */
+        .fc-daygrid-day-number, .fc-bg-event { pointer-events: none !important; }
 
-                    /* Clique e Interação */
-                    .fc-daygrid-day-frame { cursor: pointer !important; }
-                    .fc-daygrid-day-number, .fc-bg-event { pointer-events: none !important; }
-                    
-                    /* Visual */
-                    .fc-daygrid-day-number { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; position: relative; z-index: 2; color: #e4e4e7; text-decoration: none !important; }
-                    .fc-bg-event { opacity: 1 !important; border-radius: 50%; width: 32px !important; height: 32px !important; left: 50% !important; top: 50% !important; transform: translate(-50%, -50%) !important; z-index: 1 !important; }
-                    .bg-evento-azul { background-color: #3b82f6 !important; }
-                    .bg-evento-vermelho { background-color: #ef4444 !important; }
-                    .dia-selecionado { box-shadow: inset 0 0 0 2px #f59e0b !important; border-radius: 50% !important; }
-                </style>
-                ')
-            );
+        /* === VISUAL === */
+        /* Bolinhas Azuis/Vermelhas */
+        .bg-evento-azul { background-color: #3b82f6 !important; opacity: 1 !important; border-radius: 50%; width: 32px; height: 32px; transform: translate(-50%, -50%); top: 50%; left: 50%; }
+        .bg-evento-vermelho { background-color: #ef4444 !important; opacity: 1 !important; border-radius: 50%; width: 32px; height: 32px; transform: translate(-50%, -50%); top: 50%; left: 50%; }
+
+        /* === NOVO: O QUADRADO AMARELO CONTROLADO PELO PHP === */
+        .dia-selecionado-php {
+            background-color: rgba(245, 158, 11, 0.2) !important; /* Fundo Amarelo Claro */
+            border: 2px solid #f59e0b !important; /* Borda Laranja */
+            border-radius: 4px;
+            opacity: 1 !important;
+            z-index: 0 !important; /* Fica atrás do número */
+        }
+    </style>
+    ')
+);
     }
 } 
