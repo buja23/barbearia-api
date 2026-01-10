@@ -30,4 +30,9 @@ class Barbershop extends Model
         return $this->hasMany(Service::class);
     }
 
+    public function openingHours(): HasMany
+{
+    return $this->hasMany(OpeningHour::class);
+}
+
 }

@@ -7,14 +7,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Barber extends Model
 {
-    protected $fillable = [
-        'barbershop_id',
-        'name',
-        'email',
-        'phone',
-        'avatar',
-        'is_active',
-    ];
+   protected $fillable = [
+    'barbershop_id',
+    'name',
+    'email',
+    'phone',
+    'avatar',
+    'lunch_start', 
+    'lunch_end',   
+    'is_active',
+];
 
     protected $casts = [
         'is_active' => 'boolean',

@@ -1,12 +1,15 @@
 <?php
+
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\BarberResource\Pages;
 use App\Models\Barber;
+use Filament\Forms;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -20,7 +23,11 @@ class BarberResource extends Resource
 {
     protected static ?string $model = Barber::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-users';
+
+    protected static ?string $navigationLabel = 'Barbeiros';
+
+    protected static ?string $modelLabel = 'Barbeiro';
 
     public static function form(Form $form): Form
     {
@@ -29,31 +36,48 @@ class BarberResource extends Resource
                 Section::make('Dados do Profissional')
                     ->schema([
                         Select::make('barbershop_id')
-                            ->relationship('barbershop', 'name') // Aqui funciona porque criamos o método no Model!
+                            ->relationship('barbershop', 'name')
                             ->required()
                             ->label('Barbearia'),
 
                         TextInput::make('name')
                             ->required()
+                            ->maxLength(255)
                             ->label('Nome Completo'),
 
                         TextInput::make('phone')
                             ->tel()
-                            ->mask('(99) 99999-9999') // Máscara simples
+                            ->mask('(99) 99999-9999')
                             ->label('Celular'),
 
                         TextInput::make('email')
                             ->email()
+                            ->maxLength(255)
                             ->label('E-mail'),
 
                         FileUpload::make('avatar')
                             ->image()
-                            ->directory('barbers-avatars') // Pasta onde salva as fotos
+                            ->directory('barbers-avatars')
                             ->label('Foto do Perfil'),
 
                         Toggle::make('is_active')
                             ->label('Ativo para agendamentos?')
                             ->default(true),
+
+                        Section::make('Horário de Pausa/Almoço')
+                            ->description('Defina o intervalo em que este profissional não estará disponível.')
+                            ->schema([
+                                TimePicker::make('lunch_start')
+                                    ->label('Início da Pausa')
+                                    ->seconds(false)
+                                    ->displayFormat('H:i'),
+
+                                TimePicker::make('lunch_end')
+                                    ->label('Fim da Pausa')
+                                    ->seconds(false)
+                                    ->displayFormat('H:i')
+                                    ->after('lunch_start'), // Validação: Fim deve ser após o início
+                            ])->columns(2),
                     ]),
             ]);
     }
@@ -74,7 +98,11 @@ class BarberResource extends Resource
                 TextColumn::make('phone')
                     ->label('Telefone'),
 
-                ToggleColumn::make('is_active') // Permite ativar/desativar direto na lista!
+                TextColumn::make('barbershop.name')
+                    ->label('Barbearia')
+                    ->sortable(),
+
+                ToggleColumn::make('is_active')
                     ->label('Ativo'),
             ])
             ->filters([
@@ -83,6 +111,11 @@ class BarberResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
+                ]),
             ]);
     }
 
@@ -96,9 +129,9 @@ class BarberResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => Pages\ListBarbers::route('/'),
+            'index' => Pages\ListBarbers::route('/'),
             'create' => Pages\CreateBarber::route('/create'),
-            'edit'   => Pages\EditBarber::route('/{record}/edit'),
+            'edit' => Pages\EditBarber::route('/{record}/edit'),
         ];
     }
 }
