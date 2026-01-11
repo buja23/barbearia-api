@@ -18,6 +18,7 @@ use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Saade\FilamentFullCalendar\FilamentFullCalendarPlugin;
+use App\Filament\Plugins\MyCalendar\MyCalendarPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -47,8 +48,8 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([Authenticate::class])
             ->plugins([
-                // Apenas o plugin puro
-                FilamentFullCalendarPlugin::make()
+                // Apenas o plugin pur
+                new MyCalendarPlugin()
             ]);
     }
 }
