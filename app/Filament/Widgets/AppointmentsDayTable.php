@@ -1,7 +1,6 @@
 <?php
 
 namespace App\Filament\Widgets;
-
 use App\Models\Appointment;
 use Filament\Tables;
 use Filament\Tables\Table;
