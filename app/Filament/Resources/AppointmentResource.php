@@ -1,16 +1,13 @@
 <?php
-
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\AppointmentResource\Pages;
 use App\Models\Appointment;
-use App\Models\Service;
 use App\Models\Barber;
-use App\Models\OpeningHour;
-use Carbon\Carbon;
-use Closure;
+use App\Services\BookingService;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
@@ -38,71 +35,82 @@ class AppointmentResource extends Resource
     {
         return $form
             ->schema([
-                Select::make('barber_id')
-                    ->relationship('barber', 'name')
-                    ->required()
-                    ->live()
-                    ->label('Barbeiro'),
+                Section::make('Agendamento Inteligente')
+                    ->schema([
+                        Select::make('barber_id')
+                            ->relationship('barber', 'name')
+                            ->required()
+                            ->live() // Essencial para disparar a busca de horários
+                            ->label('Barbeiro'),
 
-                Select::make('service_id')
-                    ->relationship('service', 'name')
-                    ->required()
-                    ->live()
-                    ->afterStateUpdated(function ($state, Set $set) {
-                        $service = Service::find($state);
-                        if ($service) {
-                            $set('total_price', $service->price);
-                        }
-                    })
-                    ->label('Serviço'),
+                        DatePicker::make('appointment_date')
+                            ->label('Data')
+                            ->required()
+                            ->live()
+                            ->native(false)
+                            ->displayFormat('d/m/Y')
+                            ->dehydrated(false) // Campo virtual, não salva direto no banco
+                            ->afterStateHydrated(fn($state, $record, Set $set) =>
+                                $record ? $set('appointment_date', $record->scheduled_at->format('Y-m-d')) : null
+                            ),
 
-                DateTimePicker::make('scheduled_at')
-                    ->required()
-                    ->native(false)
-                    ->displayFormat('d/m/Y H:i')
-                    ->seconds(false)
-                    ->minutesStep(15) // Facilita a escolha de horários quebrados
-                    ->label('Data e Hora')
-                    ->rules([
-                        fn (Get $get): Closure => function (string $attribute, $value, Closure $fail) use ($get) {
-                            $date = Carbon::parse($value);
-                            $barberId = $get('barber_id');
+                        Select::make('appointment_time')
+                            ->label('Horários Livres')
+                            ->required()
+                            ->options(function (Get $get, BookingService $service) {
+                                $barberId  = $get('barber_id');
+                                $date      = $get('appointment_date');
+                                $serviceId = $get('service_id'); // Pegamos o ID do serviço
 
-                            if (!$barberId) return;
-
-                            $barber = Barber::find($barberId);
-                            $dayOfWeek = $date->dayOfWeek; // 0 (Dom) a 6 (Sab)
-                            $timeRequested = $date->format('H:i:s');
-
-                            // 1. Validar se a Barbearia está aberta
-                            $openingHour = OpeningHour::where('barbershop_id', $barber->barbershop_id)
-                                ->where('day_of_week', $dayOfWeek)
-                                ->first();
-
-                            if (!$openingHour || $openingHour->is_closed) {
-                                $fail("A barbearia está fechada neste dia.");
-                                return;
-                            }
-
-                            if ($timeRequested < $openingHour->opening_time || $timeRequested > $openingHour->closing_time) {
-                                $fail("Fora do horário de funcionamento ({$openingHour->opening_time} às {$openingHour->closing_time}).");
-                            }
-
-                            // 2. Validar Almoço do Barbeiro
-                            if ($barber->lunch_start && $barber->lunch_end) {
-                                if ($timeRequested >= $barber->lunch_start && $timeRequested < $barber->lunch_end) {
-                                    $fail("O barbeiro está em horário de almoço ({$barber->lunch_start} às {$barber->lunch_end}).");
+                                if (! $barberId || ! $date || ! $serviceId) {
+                                    return ['' => 'Selecione barbeiro, data e serviço'];
                                 }
-                            }
-                        },
-                    ]),
 
-                TextInput::make('total_price')
-                    ->numeric()
-                    ->prefix('R$')
-                    ->readOnly()
-                    ->required()
-                    ->label('Valor'),
+                                $barber = Barber::find($barberId);
+                                // Passamos o serviceId para o cálculo de duração
+                                $slots = $service->getAvailableSlots($barber, $date, $serviceId);
+
+                                return collect($slots)->combine($slots)->toArray();
+                            })
+                            ->live() // Garante que atualiza quando o service_id mudar
+                            ->dehydrated(false)
+                            ->afterStateHydrated(fn($state, $record, Set $set) =>
+                                $record ? $set('appointment_time', $record->scheduled_at->format('H:i')) : null
+                            )
+                            ->afterStateUpdated(function ($state, Get $get, Set $set) {
+                                $date = $get('appointment_date');
+
+                                if ($date && $state) {
+                                    // FIX: Usamos o Carbon para extrair APENAS a data e juntar com a hora limpa
+                                    $formattedDate = \Carbon\Carbon::parse($date)->format('Y-m-d');
+                                    $set('scheduled_at', "{$formattedDate} {$state}:00");
+                                }
+                            }),
+
+                        // Este é o campo real que o banco de dados espera
+                        Hidden::make('scheduled_at')->required(),
+                    ])->columns(3),
+
+                Section::make('Serviço e Valor')
+                    ->schema([
+                        Select::make('service_id')
+                            ->relationship('service', 'name')
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(function ($state, Set $set) {
+                                $service = \App\Models\Service::find($state);
+                                if ($service) {
+                                    $set('total_price', $service->price);
+                                }
+                            })
+                            ->label('Serviço'),
+
+                        TextInput::make('total_price')
+                            ->numeric()
+                            ->prefix('R$')
+                            ->readOnly()
+                            ->label('Valor'),
+                    ])->columns(2),
 
                 Select::make('status')
                     ->options([
