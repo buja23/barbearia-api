@@ -3,7 +3,6 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\AppointmentResource\Pages;
 use App\Models\Appointment;
-use App\Models\Barber;
 use App\Services\BookingService;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -40,7 +39,7 @@ class AppointmentResource extends Resource
                         Select::make('barber_id')
                             ->relationship('barber', 'name')
                             ->required()
-                            ->live() // Essencial para disparar a busca de horários
+                            ->live()
                             ->label('Barbeiro'),
 
                         DatePicker::make('appointment_date')
@@ -49,10 +48,7 @@ class AppointmentResource extends Resource
                             ->live()
                             ->native(false)
                             ->displayFormat('d/m/Y')
-                            ->dehydrated(false) // Campo virtual, não salva direto no banco
-                            ->afterStateHydrated(fn($state, $record, Set $set) =>
-                                $record ? $set('appointment_date', $record->scheduled_at->format('Y-m-d')) : null
-                            ),
+                            ->dehydrated(false),
 
                         Select::make('appointment_time')
                             ->label('Horários Livres')
@@ -60,34 +56,28 @@ class AppointmentResource extends Resource
                             ->options(function (Get $get, BookingService $service) {
                                 $barberId  = $get('barber_id');
                                 $date      = $get('appointment_date');
-                                $serviceId = $get('service_id'); // Pegamos o ID do serviço
+                                $serviceId = $get('service_id');
 
                                 if (! $barberId || ! $date || ! $serviceId) {
-                                    return ['' => 'Selecione barbeiro, data e serviço'];
+                                    return [];
                                 }
 
-                                $barber = Barber::find($barberId);
-                                // Passamos o serviceId para o cálculo de duração
-                                $slots = $service->getAvailableSlots($barber, $date, $serviceId);
-
-                                return collect($slots)->combine($slots)->toArray();
+                                $barber = \App\Models\Barber::find($barberId);
+                                return collect($service->getAvailableSlots($barber, $date, $serviceId))
+                                    ->mapWithKeys(fn($slot) => [$slot => $slot])
+                                    ->toArray();
                             })
-                            ->live() // Garante que atualiza quando o service_id mudar
+                            ->live()
                             ->dehydrated(false)
-                            ->afterStateHydrated(fn($state, $record, Set $set) =>
-                                $record ? $set('appointment_time', $record->scheduled_at->format('H:i')) : null
-                            )
                             ->afterStateUpdated(function ($state, Get $get, Set $set) {
                                 $date = $get('appointment_date');
-
                                 if ($date && $state) {
-                                    // FIX: Usamos o Carbon para extrair APENAS a data e juntar com a hora limpa
-                                    $formattedDate = \Carbon\Carbon::parse($date)->format('Y-m-d');
-                                    $set('scheduled_at', "{$formattedDate} {$state}:00");
+                                    // CORREÇÃO: Limpando a data para evitar o erro "00:00:00 13:00" no Postgres
+                                    $cleanDate = \Carbon\Carbon::parse($date)->format('Y-m-d');
+                                    $set('scheduled_at', "{$cleanDate} {$state}:00");
                                 }
                             }),
 
-                        // Este é o campo real que o banco de dados espera
                         Hidden::make('scheduled_at')->required(),
                     ])->columns(3),
 
