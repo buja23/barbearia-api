@@ -18,6 +18,6 @@ class CalendarWidget extends Widget
         // Aqui você pode salvar no banco, por exemplo:
         // Appointment::create(['date' => $date]);
 
-        $this->dispatchBrowserEvent('saved', ['date' => $date]);
+        $this->dispatch('saved', ['date' => $date]);
     }
 }

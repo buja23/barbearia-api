@@ -10,6 +10,8 @@ use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Support\Facades\FilamentAsset;
+use Filament\Support\Assets\Js;
 use Filament\Widgets;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -50,6 +52,14 @@ class AdminPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
-            ->authMiddleware([Authenticate::class]);
+            ->authMiddleware([Authenticate::class])
+            ->assets([
+                // CDN do FullCalendar (CSS e JS)
+                \Filament\Support\Assets\Css::make('fullcalendar-css', 'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css'),
+                \Filament\Support\Assets\Js::make('fullcalendar-js', 'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'),
+                
+                // Seu script local
+                Js::make('calendar-widget', asset('js/calendar-widget.js')), 
+            ]);
     }
 }
