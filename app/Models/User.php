@@ -2,42 +2,42 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens; // 1. IMPORTAÇÃO OBRIGATÓRIA PARA API
 
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    // 2. ADICIONE O TRAIT HasApiTokens AQUI PARA REMOVER O ERRO 500
+    use HasApiTokens, HasFactory, Notifiable;
 
     /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
+     * Permissões de acesso ao Painel Admin (Filament)
+     */
+    public function canAccessPanel(Panel $panel): bool
+    {
+        // Só permite acesso se o usuário tiver a role 'admin' ou 'barber'
+        return in_array($this->role, ['admin', 'barber']);
+    }
+
+    /**
+     * Campos que podem ser preenchidos em massa
      */
     protected $fillable = [
         'name',
         'email',
         'password',
+        'role', // 3. ADICIONE 'role' AQUI PARA CONSEGUIR SALVAR NO BANCO
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
