@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Models;
 
 use Filament\Models\Contracts\FilamentUser;
@@ -7,7 +6,8 @@ use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens; // 1. IMPORTAÇÃO OBRIGATÓRIA PARA API
+use Laravel\Sanctum\HasApiTokens;
+// 1. IMPORTAÇÃO OBRIGATÓRIA PARA API
 
 class User extends Authenticatable implements FilamentUser
 {
@@ -42,12 +42,20 @@ class User extends Authenticatable implements FilamentUser
     {
         return [
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'password'          => 'hashed',
         ];
     }
 
     public function barbershops()
     {
         return $this->hasMany(Barbershop::class);
+    }
+
+    // Dentro da classe User
+    public function activeSubscription()
+    {
+        return $this->hasOne(Subscription::class)
+            ->where('status', 'active')
+            ->where('expires_at', '>=', now());
     }
 }

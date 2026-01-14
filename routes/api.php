@@ -8,11 +8,14 @@ use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\CalendarController;
 use Illuminate\Http\Request; // CORREÇÃO: Import necessário para a rota /user
 use Illuminate\Support\Facades\Route;
+use \App\Http\Controllers\Api\PlanController;
+
 
 /* --- Rotas Públicas --- */
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 
+Route::get('/plans', [PlanController::class, 'index']);
 Route::get('/services', [ServiceController::class, 'index']);
 Route::get('/barbers', [BarberController::class, 'index']);
 Route::get('/barbershops/{slug}', [BarbershopController::class, 'show']);
