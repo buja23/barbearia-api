@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\AppointmentResource\Pages;
@@ -16,25 +17,28 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\BulkAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\BadgeColumn; // Certifique-se de que esta importação existe
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Carbon\Carbon;
 
 class AppointmentResource extends Resource
 {
     protected static ?string $model = Appointment::class;
-
     protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
-
     protected static ?string $navigationLabel = 'Agendamentos';
+    protected static ?string $modelLabel = 'Agendamento';
+    protected static ?string $pluralModelLabel = 'Agendamentos';
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
                 Section::make('Agendamento Inteligente')
+                    ->description('Selecione o barbeiro e a data para visualizar horários disponíveis.')
                     ->schema([
                         Select::make('barber_id')
                             ->relationship('barber', 'name')
@@ -43,11 +47,12 @@ class AppointmentResource extends Resource
                             ->label('Barbeiro'),
 
                         DatePicker::make('appointment_date')
-                            ->label('Data')
+                            ->label('Data do Corte')
                             ->required()
                             ->live()
                             ->native(false)
                             ->displayFormat('d/m/Y')
+                            ->closeOnDateSelect()
                             ->dehydrated(false),
 
                         Select::make('appointment_time')
@@ -58,9 +63,7 @@ class AppointmentResource extends Resource
                                 $date      = $get('appointment_date');
                                 $serviceId = $get('service_id');
 
-                                if (! $barberId || ! $date || ! $serviceId) {
-                                    return [];
-                                }
+                                if (! $barberId || ! $date || ! $serviceId) return [];
 
                                 $barber = \App\Models\Barber::find($barberId);
                                 return collect($service->getAvailableSlots($barber, $date, $serviceId))
@@ -72,8 +75,7 @@ class AppointmentResource extends Resource
                             ->afterStateUpdated(function ($state, Get $get, Set $set) {
                                 $date = $get('appointment_date');
                                 if ($date && $state) {
-                                    // CORREÇÃO: Limpando a data para evitar o erro "00:00:00 13:00" no Postgres
-                                    $cleanDate = \Carbon\Carbon::parse($date)->format('Y-m-d');
+                                    $cleanDate = Carbon::parse($date)->format('Y-m-d');
                                     $set('scheduled_at', "{$cleanDate} {$state}:00");
                                 }
                             }),
@@ -81,7 +83,7 @@ class AppointmentResource extends Resource
                         Hidden::make('scheduled_at')->required(),
                     ])->columns(3),
 
-                Section::make('Serviço e Valor')
+                Section::make('Detalhes do Serviço')
                     ->schema([
                         Select::make('service_id')
                             ->relationship('service', 'name')
@@ -89,9 +91,7 @@ class AppointmentResource extends Resource
                             ->live()
                             ->afterStateUpdated(function ($state, Set $set) {
                                 $service = \App\Models\Service::find($state);
-                                if ($service) {
-                                    $set('total_price', $service->price);
-                                }
+                                if ($service) $set('total_price', $service->price);
                             })
                             ->label('Serviço'),
 
@@ -99,30 +99,34 @@ class AppointmentResource extends Resource
                             ->numeric()
                             ->prefix('R$')
                             ->readOnly()
-                            ->label('Valor'),
+                            ->label('Valor do Serviço'),
+                        
+                        Select::make('status')
+                            ->label('Status do Agendamento')
+                            ->options([
+                                'pending'   => 'Pendente',
+                                'confirmed' => 'Confirmado',
+                                'cancelled' => 'Cancelado',
+                                'completed' => 'Concluído',
+                            ])
+                            ->default('confirmed')
+                            ->required(),
+                    ])->columns(3),
+
+                Section::make('Informações do Cliente')
+                    ->schema([
+                        TextInput::make('client_name')
+                            ->label('Nome do Cliente')
+                            ->placeholder('Ex: João da Silva'),
+
+                        TextInput::make('client_phone')
+                            ->label('Telefone/WhatsApp')
+                            ->mask('(99) 99999-9999')
+                            ->tel(),
                     ])->columns(2),
-
-                Select::make('status')
-                    ->options([
-                        'pending'   => 'Pendente',
-                        'confirmed' => 'Confirmado',
-                        'completed' => 'Concluído',
-                        'cancelled' => 'Cancelado',
-                    ])
-                    ->default('confirmed')
-                    ->required(),
-
-                TextInput::make('client_name')
-                    ->label('Nome do Cliente (Avulso)')
-                    ->placeholder('Ex: João da Silva'),
-
-                TextInput::make('client_phone')
-                    ->label('Telefone')
-                    ->mask('(99) 99999-9999'),
             ]);
     }
 
-    // ... Restante do código (Table, Filters, etc) permanece igual ao seu original
     public static function table(Table $table): Table
     {
         return $table
@@ -134,10 +138,9 @@ class AppointmentResource extends Resource
 
                 TextColumn::make('barber.name')
                     ->label('Barbeiro')
+                    ->badge()
+                    ->color('gray')
                     ->sortable(),
-
-                TextColumn::make('service.name')
-                    ->label('Serviço'),
 
                 TextColumn::make('scheduled_at')
                     ->label('Data e Hora')
@@ -148,33 +151,41 @@ class AppointmentResource extends Resource
                     ->label('Preço')
                     ->money('BRL'),
 
-                TextColumn::make('status')
-                    ->badge()
-                    ->formatStateUsing(fn(string $state): string => ucfirst($state))
-                    ->color(fn(string $state): string => match ($state) {
-                        'pending'   => 'warning',
-                        'confirmed' => 'success',
-                        'completed' => 'info',
-                        'cancelled' => 'danger',
-                        default     => 'gray',
+                BadgeColumn::make('status')
+                    ->label('Status')
+                    ->formatStateUsing(fn(string $state): string => match ($state) {
+                        'pending'   => 'Pendente',
+                        'confirmed' => 'Confirmado',
+                        'cancelled' => 'Cancelado',
+                        'completed' => 'Concluído',
+                        default     => $state,
                     })
-                    ->sortable()
-                    ->searchable(),
+                    ->colors([
+                        'warning' => 'pending',   // Amarelo
+                        'info'    => 'confirmed', // Azul
+                        'danger'  => 'cancelled', // Vermelho
+                        'success' => 'completed', // Verde
+                    ]),
             ])
             ->defaultSort('scheduled_at', 'desc')
             ->filters([
                 SelectFilter::make('status')
-                    ->label('Filtrar por Status')
+                    ->label('Status')
                     ->options([
                         'pending'   => 'Pendente',
                         'confirmed' => 'Confirmado',
                         'completed' => 'Concluído',
                         'cancelled' => 'Cancelado',
                     ]),
+                
+                // Senior Move: Adicionando filtro por barbeiro para facilitar a gestão
+                SelectFilter::make('barber_id')
+                    ->label('Barbeiro')
+                    ->relationship('barber', 'name'),
 
                 Filter::make('data_agendamento')
                     ->form([
-                        DatePicker::make('data_inicial')->label('De'),
+                        DatePicker::make('data_inicial')->label('Desde'),
                         DatePicker::make('data_final')->label('Até'),
                     ])
                     ->query(function (Builder $query, array $data): Builder {
@@ -190,13 +201,14 @@ class AppointmentResource extends Resource
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                     BulkAction::make('alterarStatus')
-                        ->label('Atualizar Status')
-                        ->icon('heroicon-o-check-circle')
+                        ->label('Alterar Status em Massa')
+                        ->icon('heroicon-o-arrow-path')
                         ->action(function (Collection $records, array $data) {
                             $records->each(fn($record) => $record->update(['status' => $data['status']]));
                         })
                         ->form([
                             Select::make('status')
+                                ->label('Novo Status')
                                 ->options([
                                     'confirmed' => 'Confirmado',
                                     'completed' => 'Concluído',

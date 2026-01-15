@@ -13,16 +13,17 @@ class ListAppointments extends ListRecords
 {
     protected static string $resource = AppointmentResource::class;
 
-    // Variável que guarda a data que o usuário clicou
+    // Estado que armazena a data selecionada no calendário
     public ?string $filtroData = null;
 
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            Actions\CreateAction::make()->label('Novo Agendamento'),
         ];
     }
 
+    // Registra apenas o Calendário no topo
     protected function getHeaderWidgets(): array
     {
         return [
@@ -30,21 +31,22 @@ class ListAppointments extends ListRecords
         ];
     }
 
-    // 1. OUVINTE: Quando o calendário gritar "filtrar-data", cai aqui
+    // OUVINTE: Captura o evento disparado pelo JavaScript do calendário
     #[On('filtrar-data')]
     public function atualizarFiltroData(string $date): void
     {
-        $this->filtroData = $date;
-        $this->resetTable(); // Reinicia a paginação e atualiza
+        // Se clicar na mesma data já selecionada, limpamos o filtro (mostra tudo)
+        $this->filtroData = ($this->filtroData === $date) ? null : $date;
+        
+        // Reinicia a paginação da tabela para evitar erros de visualização
+        $this->resetTable();
     }
 
-    // 2. FILTRO: Aplica a data na query do banco
+    // FILTRO: Aplica a data na query principal do Filament
     protected function modifyQueryUsing(Builder $query): Builder
     {
-        // Se tiver uma data selecionada, filtra. Se não, mostra tudo.
-        return $query->when($this->filtroData, function ($q) {
-            // Garanta que o nome da coluna é 'scheduled_at' (ou 'date_time', verifique seu banco)
-            return $q->whereDate('scheduled_at', $this->filtroData);
-        });
+        return $query
+            ->when($this->filtroData, fn ($q) => $q->whereDate('scheduled_at', $this->filtroData))
+            ->orderBy('scheduled_at', 'asc');
     }
 }

@@ -7,15 +7,23 @@ document.addEventListener('alpine:init', () => {
                     this.$el.querySelector('#calendar'),
                     {
                         initialView: 'dayGridMonth',
+                        locale: 'pt-br', // Senior touch: garante o idioma
                         selectable: true,
+                        headerToolbar: {
+                            left: 'prev,next today',
+                            center: 'title',
+                            right: 'dayGridMonth,timeGridWeek'
+                        },
                         dateClick: (info) => {
-                            livewire.call('selectDate', info.dateStr);
+                            // disparamaos um evento para a página filtrar a tabela principal.
+                            livewire.dispatch('filtrar-data', { date: info.dateStr });
+
+                            // Feedback visual: opcionalmente você pode destacar o dia clicado aqui
                         },
                     }
                 );
                 this.calendar.render();
 
-                // Exemplo: Se você disparar um evento para atualizar o calendário
                 livewire.on('refreshCalendar', (event) => {
                     this.calendar.refetchEvents();
                 });
