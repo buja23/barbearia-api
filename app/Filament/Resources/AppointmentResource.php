@@ -1,10 +1,10 @@
 <?php
-
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\AppointmentResource\Pages;
 use App\Models\Appointment;
 use App\Services\BookingService;
+use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Section;
@@ -16,21 +16,20 @@ use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\BulkAction;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn; // Certifique-se de que esta importação existe
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
-use Carbon\Carbon;
 
 class AppointmentResource extends Resource
 {
-    protected static ?string $model = Appointment::class;
-    protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
-    protected static ?string $navigationLabel = 'Agendamentos';
-    protected static ?string $modelLabel = 'Agendamento';
+    protected static ?string $model            = Appointment::class;
+    protected static ?string $navigationIcon   = 'heroicon-o-calendar-days';
+    protected static ?string $navigationLabel  = 'Agendamentos';
+    protected static ?string $modelLabel       = 'Agendamento';
     protected static ?string $pluralModelLabel = 'Agendamentos';
 
     public static function form(Form $form): Form
@@ -63,7 +62,9 @@ class AppointmentResource extends Resource
                                 $date      = $get('appointment_date');
                                 $serviceId = $get('service_id');
 
-                                if (! $barberId || ! $date || ! $serviceId) return [];
+                                if (! $barberId || ! $date || ! $serviceId) {
+                                    return [];
+                                }
 
                                 $barber = \App\Models\Barber::find($barberId);
                                 return collect($service->getAvailableSlots($barber, $date, $serviceId))
@@ -91,7 +92,10 @@ class AppointmentResource extends Resource
                             ->live()
                             ->afterStateUpdated(function ($state, Set $set) {
                                 $service = \App\Models\Service::find($state);
-                                if ($service) $set('total_price', $service->price);
+                                if ($service) {
+                                    $set('total_price', $service->price);
+                                }
+
                             })
                             ->label('Serviço'),
 
@@ -100,7 +104,7 @@ class AppointmentResource extends Resource
                             ->prefix('R$')
                             ->readOnly()
                             ->label('Valor do Serviço'),
-                        
+
                         Select::make('status')
                             ->label('Status do Agendamento')
                             ->options([
@@ -151,8 +155,9 @@ class AppointmentResource extends Resource
                     ->label('Preço')
                     ->money('BRL'),
 
-                BadgeColumn::make('status')
+                TextColumn::make('status')
                     ->label('Status')
+                    ->badge()
                     ->formatStateUsing(fn(string $state): string => match ($state) {
                         'pending'   => 'Pendente',
                         'confirmed' => 'Confirmado',
@@ -160,12 +165,13 @@ class AppointmentResource extends Resource
                         'completed' => 'Concluído',
                         default     => $state,
                     })
-                    ->colors([
-                        'warning' => 'pending',   // Amarelo
-                        'info'    => 'confirmed', // Azul
-                        'danger'  => 'cancelled', // Vermelho
-                        'success' => 'completed', // Verde
-                    ]),
+                    ->color(fn(string $state): string => match ($state) {
+                        'pending'   => 'warning',
+                        'confirmed' => 'info',
+                        'cancelled' => 'danger',
+                        'completed' => 'success',
+                        default     => 'gray',
+                    }),
             ])
             ->defaultSort('scheduled_at', 'desc')
             ->filters([
@@ -177,7 +183,7 @@ class AppointmentResource extends Resource
                         'completed' => 'Concluído',
                         'cancelled' => 'Cancelado',
                     ]),
-                
+
                 // Senior Move: Adicionando filtro por barbeiro para facilitar a gestão
                 SelectFilter::make('barber_id')
                     ->label('Barbeiro')
@@ -225,6 +231,14 @@ class AppointmentResource extends Resource
             'index'  => Pages\ListAppointments::route('/'),
             'create' => Pages\CreateAppointment::route('/create'),
             'edit'   => Pages\EditAppointment::route('/{record}/edit'),
+        ];
+    }
+
+    // Adicione (ou atualize) o método getWidgets no final da classe
+    public static function getWidgets(): array
+    {
+        return [
+            \App\Filament\Widgets\CalendarWidget::class,
         ];
     }
 }

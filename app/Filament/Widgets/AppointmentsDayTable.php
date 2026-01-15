@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Filament\Widgets;
 
 use App\Models\Appointment;
@@ -10,6 +9,12 @@ use Livewire\Attributes\On;
 
 class AppointmentsDayTable extends BaseWidget
 {
+    public static function canView(): bool
+    {
+        // Retornando false, eles somem do Dashboard principal automaticamente
+        return false;
+    }
+
     public $dataSelecionada;
 
     // Inicia com a data de hoje
@@ -48,8 +53,8 @@ class AppointmentsDayTable extends BaseWidget
                     ->colors([
                         'warning' => 'pending',
                         'success' => 'confirmed',
-                        'info' => 'completed',
-                        'danger' => 'cancelled',
+                        'info'    => 'completed',
+                        'danger'  => 'cancelled',
                     ]),
             ]);
     }

@@ -8,7 +8,7 @@ class CalendarWidget extends Widget
     public static function canView(): bool
     {
         // Oculta do Dashboard, mas mantém o widget funcional no código
-        return false;
+        return ! request()->routeIs('filament.admin.pages.dashboard');
     }
     protected static string $view = 'filament.widgets.calendar-widget';
 
@@ -17,11 +17,7 @@ class CalendarWidget extends Widget
     public function selectDate($date)
     {
         $this->selectedDate = $date;
-
-        // Aqui você pode salvar no banco, por exemplo:
-        // Appointment::create(['date' => $date]);
-
-        $this->dispatch('filtrar-data', data: $date);
+        // Mudamos 'data:' para 'date:' para sincronizar com o ListAppointments
+        $this->dispatch('filtrar-data', date: $date);
     }
-
 }

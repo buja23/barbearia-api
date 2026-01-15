@@ -1,5 +1,5 @@
 document.addEventListener('alpine:init', () => {
-    window.calendarWidget = function(livewire) {
+    window.calendarWidget = function (livewire) {
         return {
             calendar: null,
             init() {
@@ -14,11 +14,13 @@ document.addEventListener('alpine:init', () => {
                             center: 'title',
                             right: 'dayGridMonth,timeGridWeek'
                         },
+                        // Dentro do seu dateClick do FullCalendar:
                         dateClick: (info) => {
-                            // disparamaos um evento para a página filtrar a tabela principal.
-                            livewire.dispatch('filtrar-data', { date: info.dateStr });
+                            // DISPATCH envia a data para a página ListAppointments
+                            Livewire.dispatch('filtrar-data', { date: info.dateStr });
 
-                            // Feedback visual: opcionalmente você pode destacar o dia clicado aqui
+                            // Opcional: Feedback visual no console para você testar
+                            console.log('Calendário enviou a data:', info.dateStr);
                         },
                     }
                 );
