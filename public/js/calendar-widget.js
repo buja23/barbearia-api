@@ -1,5 +1,5 @@
 document.addEventListener('alpine:init', () => {
-    window.calendarWidget = function (livewire) {
+    window.calendarWidget = function(livewire) {
         return {
             calendar: null,
             init() {
@@ -7,28 +7,21 @@ document.addEventListener('alpine:init', () => {
                     this.$el.querySelector('#calendar'),
                     {
                         initialView: 'dayGridMonth',
-                        locale: 'pt-br', // Senior touch: garante o idioma
+                        locale: 'pt-br', // Senior touch: calendário em português
                         selectable: true,
                         headerToolbar: {
                             left: 'prev,next today',
                             center: 'title',
-                            right: 'dayGridMonth,timeGridWeek'
+                            right: 'dayGridMonth'
                         },
-                        // Dentro do seu dateClick do FullCalendar:
                         dateClick: (info) => {
-                            // DISPATCH envia a data para a página ListAppointments
-                            Livewire.dispatch('filtrar-data', { date: info.dateStr });
-
-                            // Opcional: Feedback visual no console para você testar
+                            // SENIOR FIX: Chamada direta ao método do PHP via proxy
+                            livewire.selectDate(info.dateStr);
                             console.log('Calendário enviou a data:', info.dateStr);
                         },
                     }
                 );
                 this.calendar.render();
-
-                livewire.on('refreshCalendar', (event) => {
-                    this.calendar.refetchEvents();
-                });
             }
         }
     }
