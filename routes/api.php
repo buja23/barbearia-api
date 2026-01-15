@@ -37,4 +37,5 @@ Route::middleware('auth:sanctum')->group(function () {
     // Agendamento Inteligente
     Route::get('/slots', [AppointmentController::class, 'getAvailableSlots']);
     Route::post('/appointments', [AppointmentController::class, 'store']);
+    Route::delete('/appointments/{id}', [AppointmentController::class, 'destroy']);
 });
