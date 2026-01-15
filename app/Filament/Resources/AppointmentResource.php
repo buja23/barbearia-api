@@ -157,7 +157,7 @@ class AppointmentResource extends Resource
 
                 TextColumn::make('status')
                     ->label('Status')
-                    ->badge()
+                    ->badge() 
                     ->formatStateUsing(fn(string $state): string => match ($state) {
                         'pending'   => 'Pendente',
                         'confirmed' => 'Confirmado',

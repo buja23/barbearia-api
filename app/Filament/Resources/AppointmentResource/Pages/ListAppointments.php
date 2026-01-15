@@ -3,17 +3,14 @@
 namespace App\Filament\Resources\AppointmentResource\Pages;
 
 use App\Filament\Resources\AppointmentResource;
-use App\Filament\Widgets\CalendarWidget; // Verifique se este use está assim!
+use App\Filament\Widgets\CalendarWidget;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Livewire\Attributes\On; 
-use Illuminate\Database\Eloquent\Builder;
 
 class ListAppointments extends ListRecords
 {
     protected static string $resource = AppointmentResource::class;
-
-    public ?string $filtroData = null;
 
     protected function getHeaderActions(): array
     {
@@ -22,31 +19,32 @@ class ListAppointments extends ListRecords
         ];
     }
 
-    // Define quais widgets aparecem no topo desta página específica
-    protected function getHeaderWidgets(): array 
+    protected function getHeaderWidgets(): array
     {
         return [
             CalendarWidget::class,
         ];
     }
 
-    // Configura o layout (1 coluna para o calendário ficar largo no topo)
-    public function getHeaderWidgetsColumns(): int | array
-    {
-        return 1;
-    }
-
+    // 🚀 O PULO DO GATO: Atualiza o filtro oficial da tabela
     #[On('filtrar-data')]
     public function atualizarFiltroData(string $date): void
     {
-        $this->filtroData = ($this->filtroData === $date) ? null : $date;
-        $this->resetTable();
-    }
+        // Se a data clicada for a mesma que já está no filtro, nós limpamos (Toggle)
+        if (($this->tableFilters['data_agendamento']['data_inicial'] ?? null) === $date) {
+            $this->tableFilters['data_agendamento'] = [
+                'data_inicial' => null,
+                'data_final' => null,
+            ];
+        } else {
+            // Injeta a data no filtro 'data_agendamento' (inicial e final iguais para filtrar o dia exato)
+            $this->tableFilters['data_agendamento'] = [
+                'data_inicial' => $date,
+                'data_final' => $date,
+            ];
+        }
 
-    protected function modifyQueryUsing(Builder $query): Builder
-    {
-        return $query->when($this->filtroData, function ($q) {
-            return $q->whereDate('scheduled_at', $this->filtroData);
-        })->orderBy('scheduled_at', 'asc');
+        // Reseta a página para a 1 para evitar erros de paginação
+        $this->resetPage();
     }
 }
