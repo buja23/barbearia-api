@@ -2,13 +2,17 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Appointment;
+use App\Models\Service;
 use App\Models\Barber;
+use App\Models\Subscription; // Importação necessária para o Módulo 4
 use App\Services\BookingService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB; // Importação vital para DB::transaction
+use Carbon\Carbon;
 
 class AppointmentController extends Controller
 {
-    // O App envia ?barber_id=1&date=2026-01-20&service_id=2
     public function getAvailableSlots(Request $request, BookingService $service)
     {
         $request->validate([
@@ -18,13 +22,7 @@ class AppointmentController extends Controller
         ]);
 
         $barber = Barber::find($request->barber_id);
-
-        // Reutiliza a lógica do Módulo 2
-        $slots = $service->getAvailableSlots(
-            $barber,
-            $request->date,
-            $request->service_id
-        );
+        $slots = $service->getAvailableSlots($barber, $request->date, $request->service_id);
 
         return response()->json($slots);
     }
@@ -38,10 +36,10 @@ class AppointmentController extends Controller
             'client_phone' => 'required|string',
         ]);
 
-        $user    = $request->user();
+        $user = $request->user();
         $service = Service::findOrFail($data['service_id']);
 
-        // 1. Verificação de conflito (Race Condition)
+        // 1. Verificação de conflito
         $exists = Appointment::where('barber_id', $data['barber_id'])
             ->where('scheduled_at', $data['scheduled_at'])
             ->whereIn('status', ['confirmed', 'pending'])
@@ -52,23 +50,16 @@ class AppointmentController extends Controller
         }
 
         // 2. Lógica de Assinatura (Módulo 4)
-        // Buscamos a assinatura ativa do usuário
-        $subscription          = $user->activeSubscription;
-        $isSubscriptionBooking = false;
-        $finalPrice            = $service->price;
+        // Se você ainda não criou a relação no User.php, o código abaixo dará erro.
+        $subscription = $user->activeSubscription; 
+        $isSubscriptionBooking = $subscription && $subscription->remaining_cuts > 0;
+        $finalPrice = $isSubscriptionBooking ? 0.00 : $service->price;
 
-        if ($subscription && $subscription->remaining_cuts > 0) {
-            $isSubscriptionBooking = true;
-            $finalPrice            = 0.00; // O corte sai de graça porque já foi pago na mensalidade
-        }
-
-        // 3. Cálculo de término
         $start = Carbon::parse($data['scheduled_at']);
-        $end   = $start->copy()->addMinutes($service->duration_minutes);
+        $end = $start->copy()->addMinutes($service->duration_minutes);
 
-        // 4. Gravação com Transação para garantir integridade
+        // 3. Gravação com Transação
         return DB::transaction(function () use ($data, $user, $service, $end, $finalPrice, $subscription, $isSubscriptionBooking) {
-
             $appointment = Appointment::create([
                 'barber_id'    => $data['barber_id'],
                 'service_id'   => $data['service_id'],
@@ -79,18 +70,17 @@ class AppointmentController extends Controller
                 'end_at'       => $end,
                 'total_price'  => $finalPrice,
                 'status'       => 'confirmed',
-                'notes'        => $isSubscriptionBooking ? 'Corte via assinatura' : null,
+                'notes'        => $isSubscriptionBooking ? 'Agendado via assinatura' : null,
             ]);
 
-            // Se for via assinatura, debitamos 1 corte do saldo do cliente
             if ($isSubscriptionBooking) {
                 $subscription->decrement('remaining_cuts');
             }
 
             return response()->json([
-                'message'        => $isSubscriptionBooking ? 'Agendado via assinatura!' : 'Agendado com sucesso!',
-                'appointment'    => $appointment,
-                'remaining_cuts' => $isSubscriptionBooking ? $subscription->remaining_cuts : null,
+                'message' => $isSubscriptionBooking ? 'Agendado via assinatura!' : 'Agendado com sucesso!',
+                'appointment' => $appointment,
+                'remaining_cuts' => $isSubscriptionBooking ? $subscription->remaining_cuts : null
             ], 201);
         });
     }
