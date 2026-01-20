@@ -1,27 +1,27 @@
 document.addEventListener('alpine:init', () => {
-    window.calendarWidget = function(livewire) {
+    window.calendarWidget = function(livewire, calendarEvents) {
         return {
-            calendar: null,
             init() {
-                this.calendar = new FullCalendar.Calendar(
-                    this.$el.querySelector('#calendar'),
-                    {
-                        initialView: 'dayGridMonth',
-                        locale: 'pt-br', // Senior touch: calendário em português
-                        selectable: true,
-                        headerToolbar: {
-                            left: 'prev,next today',
-                            center: 'title',
-                            right: 'dayGridMonth'
-                        },
-                        dateClick: (info) => {
-                            // SENIOR FIX: Chamada direta ao método do PHP via proxy
-                            livewire.selectDate(info.dateStr);
-                            console.log('Calendário enviou a data:', info.dateStr);
-                        },
-                    }
-                );
-                this.calendar.render();
+                const calendar = new FullCalendar.Calendar(this.$el.querySelector('#calendar'), {
+                    initialView: 'dayGridMonth',
+                    locale: 'pt-br',
+                    headerToolbar: { left: 'prev', center: 'title', right: 'next' },
+                    height: 'auto', // Deixa o calendário compacto
+                    contentHeight: 'auto',
+                    fixedWeekCount: false, // Remove semanas vazias no final do mês
+                    showNonCurrentDates: false, // Limpa o visual (opcional)
+                    selectable: true,
+                    events: calendarEvents,
+                    
+                    dateClick: (info) => {
+                        livewire.selectDate(info.dateStr);
+                        
+                        // Classe para estilizar o dia selecionado
+                        document.querySelectorAll('.dia-selecionado').forEach(el => el.classList.remove('dia-selecionado'));
+                        info.dayEl.classList.add('dia-selecionado');
+                    },
+                });
+                calendar.render();
             }
         }
     }
