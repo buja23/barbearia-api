@@ -20,43 +20,47 @@ class CalendarWidget extends Widget
     public function selectDate($date)
     {
         $this->selectedDate = $date;
+        // Simulando um pequeno delay para você ver o Loading Lindo (Remova em produção se quiser)
+        // usleep(300000);
         $this->dispatch('filtrar-data', date: $date);
     }
 
-    // 🚀 Gera as bolinhas coloridas baseadas na lotação
     public function getCalendarEvents(): array
     {
-        // Chave única baseada no mês atual para o cache
-        $cacheKey = 'calendar_events_' . now()->format('Y_m');
+        // Cacheia a query por 5 minutos para performance instantânea
+        return Cache::remember('calendar_events_' . now()->format('Y-m'), 300, function () {
 
-        // 🚀 SENIOR MOVE: Cache por 10 minutos.
-        // Só recalculamos se o cache expirar.
-        return Cache::remember($cacheKey, 600, function () {
+            // Pega dados do mês atual e arredores
+            $start = now()->startOfMonth()->subDays(15);
+            $end   = now()->endOfMonth()->addDays(15);
 
-            // Aqui vai a sua query pesada original...
             $counts = Appointment::select(
                 DB::raw('DATE(scheduled_at) as date'),
                 DB::raw('count(*) as total')
             )
-            // Dica: Pegue um intervalo maior para cobrir viradas de mês visualmente
-                ->whereBetween('scheduled_at', [now()->subMonth(), now()->addMonths(2)])
+                ->whereBetween('scheduled_at', [$start, $end])
                 ->groupBy('date')
                 ->get();
 
-            return $counts->map(function ($day) {
-                $class = 'bg-evento-azul';
-                if ($day->total >= 12) {
+            // Capacidade (Exemplo: 15 cortes/dia)
+            $lotado = 15;
+            $medio  = 8;
+
+            // No método getCalendarEvents:
+            return $counts->map(function ($day) use ($lotado, $medio) {
+                                           // Definindo as cores das bolas
+                $class = 'bg-evento-azul'; // Padrão: Bola Azul Claro
+
+                if ($day->total >= $lotado) {
                     $class = 'bg-evento-vermelho';
-                } elseif ($day->total >= 7) {
+                } elseif ($day->total >= $medio) {
                     $class = 'bg-evento-laranja';
                 }
 
                 return [
                     'start'      => $day->date,
-                    'display'    => 'background',
+                    'display'    => 'background', // Isso cria a "Bola" atrás do número
                     'classNames' => [$class],
-                    // Adicione isso:
-                    'title'      => "{$day->total} cortes agendados",
                 ];
             })->toArray();
         });

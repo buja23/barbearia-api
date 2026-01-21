@@ -1,146 +1,124 @@
 <x-filament-widgets::widget>
-    <x-filament::section>
-        {{-- Passamos os eventos para o AlpineJS --}}
-        <div x-data="calendarWidget(@this, {{ json_encode($this->getCalendarEvents()) }})" class="w-full flex justify-center">
-            <style>
-                /* === 1. Layout Mobile-First Premium (Sua Referência) === */
-                .fc {
-                    max-width: 380px !important;
-                    margin: 0 auto !important;
-                    font-family: 'Inter', sans-serif; /* Fonte mais clean */
-                    background: transparent;
-                }
+    <x-filament::section class="!p-0 !rounded-[2rem] shadow-2xl overflow-hidden border-0 ring-1 ring-gray-100 dark:ring-gray-800">
+        
+        <div 
+            x-data="calendarWidget(@this, {{ json_encode($this->getCalendarEvents()) }})" 
+            class="relative bg-white dark:bg-gray-900 p-6 md:p-8"
+        >
+            {{-- Header Clean --}}
+            <div class="flex items-center justify-between mb-6 px-2">
+                <h2 id="calendar-title" class="text-2xl font-black text-gray-900 dark:text-white tracking-tight capitalize font-sans">
+                    {{-- JS preenche aqui --}}
+                </h2>
+                <div class="flex gap-2 bg-gray-100 dark:bg-gray-800 p-1 rounded-full">
+                    <button id="prevBtn" class="p-2 rounded-full hover:bg-white dark:hover:bg-gray-700 shadow-sm transition-all text-gray-600 dark:text-gray-300">
+                        <x-filament::icon icon="heroicon-m-chevron-left" class="h-5 w-5" />
+                    </button>
+                    <button id="nextBtn" class="p-2 rounded-full hover:bg-white dark:hover:bg-gray-700 shadow-sm transition-all text-gray-600 dark:text-gray-300">
+                        <x-filament::icon icon="heroicon-m-chevron-right" class="h-5 w-5" />
+                    </button>
+                </div>
+            </div>
 
-                /* Toolbar Minimalista */
-                .fc-toolbar {
-                    justify-content: space-between !important;
-                    align-items: center !important;
-                    margin-bottom: 24px !important;
-                    padding: 0 10px;
-                }
-                .fc-toolbar-title {
-                    font-size: 1.1rem !important;
-                    font-weight: 700;
-                    color: #374151;
-                    text-transform: capitalize;
-                }
-                .dark .fc-toolbar-title { color: white; }
+            {{-- Calendário --}}
+            <div id="calendar" wire:ignore class="calendar-senior-theme"></div>
 
-                /* Botões de Navegação Invisíveis */
-                .fc-button {
-                    background: transparent !important;
-                    border: none !important;
-                    color: #9ca3af !important; /* Cinza suave */
-                    box-shadow: none !important;
-                    padding: 4px !important;
-                }
-                .fc-button:hover { color: #1f2937 !important; transform: scale(1.1); }
-                .fc-button:active { color: #000 !important; }
-                .fc-button:focus { box-shadow: none !important; }
+            {{-- Legenda (Status Balls) --}}
+            <div class="mt-8 flex items-center justify-center gap-6 border-t border-dashed border-gray-100 dark:border-gray-800 pt-6">
+                <div class="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-widest">
+                    <span class="w-3 h-3 rounded-full bg-blue-100 border border-blue-500"></span> Livre
+                </div>
+                <div class="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-widest">
+                    <span class="w-3 h-3 rounded-full bg-orange-100 border border-orange-500"></span> Médio
+                </div>
+                <div class="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase tracking-widest">
+                    <span class="w-3 h-3 rounded-full bg-red-100 border border-red-500"></span> Lotado
+                </div>
+            </div>
 
-                /* Limpeza da Grade */
-                .fc-theme-standard td, .fc-theme-standard th, .fc-scrollgrid { 
-                    border: none !important; 
-                }
-                .fc-col-header-cell-cushion { 
-                    color: #9ca3af; 
-                    text-decoration: none !important; 
-                    font-weight: 600; 
-                    text-transform: uppercase; 
-                    font-size: 0.7rem; 
-                    letter-spacing: 0.05em;
-                }
-
-                /* === 2. Célula do Dia (O Container) === */
-                .fc-daygrid-day-frame {
-                    min-height: 44px !important; /* Altura fixa para ficar redondinho */
-                    height: 44px !important;
-                    position: relative;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    cursor: pointer !important;
-                    margin-bottom: 4px; /* Espaço entre linhas */
-                }
-
-                /* === 3. A Correção "Nuclear" dos Números === */
-                .fc-daygrid-day-top {
-                    flex-direction: row; 
-                    justify-content: center;
-                    position: absolute; /* Solta o número */
-                    z-index: 20; /* Força ficar na frente de tudo */
-                    pointer-events: none; /* Clique atravessa o número */
-                }
-
-                .fc-daygrid-day-number {
-                    font-size: 0.9rem;
-                    font-weight: 600;
-                    color: #52525b; /* Zinc 600 */
-                    text-decoration: none !important;
-                    width: 32px;
-                    height: 32px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    z-index: 20; /* Redundância de segurança */
-                }
-                .dark .fc-daygrid-day-number { color: #e4e4e7; }
-
-                /* === 4. As Bolinhas (Eventos de Fundo) === */
-                .fc-bg-event {
-                    opacity: 1 !important;
-                    border-radius: 50% !important;
-                    width: 36px !important; /* Ligeiramente maior que o número */
-                    height: 36px !important;
-                    left: 50% !important; 
-                    top: 50% !important;
-                    transform: translate(-50%, -50%) !important; /* Centralização perfeita */
-                    z-index: 1 !important; /* Atrás do número */
-                    pointer-events: none !important;
-                }
-
-                /* Cores Suaves (Pastel) */
-                .bg-evento-azul { background-color: #dbeafe !important; } /* Blue 100 */
-                .bg-evento-laranja { background-color: #ffedd5 !important; } /* Orange 100 */
-                .bg-evento-vermelho { background-color: #fee2e2 !important; } /* Red 100 */
-
-                /* Ajuste de cor do texto quando tem bolinha (opcional, para contraste) */
-                .fc-day-other .fc-daygrid-day-number { color: #d4d4d8; } /* Dias de outro mês mais claros */
-
-                /* === 5. Estados Especiais === */
-                
-                /* Hoje (Amarelo) */
-                .fc-day-today .fc-daygrid-day-number {
-                    background-color: #fcd34d !important; /* Amber 300 */
-                    color: #451a03 !important;
-                    border-radius: 50%;
-                    box-shadow: 0 2px 4px rgba(251, 191, 36, 0.3);
-                }
-                .fc .fc-daygrid-day.fc-day-today { background-color: transparent !important; }
-
-                /* Selecionado (Anel de Foco) */
-                .dia-selecionado .fc-daygrid-day-frame {
-                    background-color: rgba(0,0,0,0.03);
-                    border-radius: 50%;
-                }
-                .dia-selecionado .fc-daygrid-day-number {
-                    color: #000;
-                    font-weight: 800;
-                }
-            </style>
-
-            <div id="calendar" wire:ignore></div> 
+            {{-- Loading State --}}
+            <div 
+                wire:loading.flex 
+                wire:target="selectDate" 
+                class="absolute inset-0 z-50 flex items-center justify-center bg-white/50 dark:bg-gray-900/50 backdrop-blur-[2px] transition-all rounded-[2rem]"
+            >
+                <x-filament::loading-indicator class="h-10 w-10 text-blue-600" />
+            </div>
         </div>
-        <div x-data="calendarWidget(...)" class="w-full relative"> {{-- Adicione relative aqui --}}
-    
-    {{-- 🚀 SENIOR UX: Overlay de Carregamento --}}
-    <div wire:loading.flex wire:target="selectDate" class="absolute inset-0 z-50 flex items-center justify-center bg-white/50 backdrop-blur-[2px] rounded-xl transition-all duration-300">
-        <div class="flex flex-col items-center gap-2">
-            <x-filament::loading-indicator class="h-8 w-8 text-primary-600" />
-            <span class="text-xs font-semibold text-primary-700 animate-pulse">Filtrando...</span>
-        </div>
-    </div>
 
-    {{-- O resto do seu calendário continua aqui... --}}
+        <style>
+            /* === CSS SENIOR V6 === */
+            .fc-theme-standard td, .fc-theme-standard th { border: none !important; }
+            .fc-header-toolbar { display: none !important; } 
+
+            .calendar-senior-theme { font-family: 'Inter', sans-serif; }
+
+            /* Dias da Semana */
+            .fc-col-header-cell-cushion {
+                color: #9ca3af; font-size: 0.75rem; font-weight: 700; 
+                text-transform: uppercase; padding-bottom: 24px !important;
+            }
+
+            /* Container do Dia */
+            .fc-daygrid-day-frame {
+                height: 50px !important; width: 50px !important; margin: 0 auto 4px auto;
+                display: flex; justify-content: center; align-items: center;
+                cursor: pointer; border-radius: 50%;
+                transition: transform 0.1s ease;
+            }
+            /* Hover Effect (O que você gostou) */
+            .fc-daygrid-day-frame:hover {
+                transform: scale(1.15);
+                background-color: #f3f4f6; /* Cinza bem leve no hover */
+            }
+            .dark .fc-daygrid-day-frame:hover { background-color: #374151; }
+
+            /* === NÚMERO (A Mágica do Z-Index) === */
+            .fc-daygrid-day-number {
+                font-size: 0.95rem; font-weight: 600; color: #4b5563;
+                z-index: 20; position: relative; pointer-events: none;
+            }
+            .dark .fc-daygrid-day-number { color: #e5e7eb; }
+
+            /* === HOJE (Adeus Amarelo Feio, Olá Azul Apple) === */
+            .fc-day-today .fc-daygrid-day-frame {
+                background-color: #3b82f6 !important; /* Azul Real */
+                box-shadow: 0 4px 10px rgba(59, 130, 246, 0.4);
+            }
+            .fc-day-today .fc-daygrid-day-number {
+                color: white !important; font-weight: 800;
+            }
+            
+            /* === BOLAS DE STATUS (Background Events) === */
+            .fc-bg-event {
+                opacity: 1 !important;
+                border-radius: 50%;
+                width: 42px !important; height: 42px !important;
+                left: 50% !important; top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                z-index: 10 !important; /* Fica atrás do número */
+                pointer-events: none;
+            }
+
+            /* Cores das Bolas */
+            .bg-evento-azul { background-color: #dbeafe !important; } /* Blue 100 */
+            .bg-evento-laranja { background-color: #ffedd5 !important; } /* Orange 100 */
+            .bg-evento-vermelho { background-color: #fee2e2 !important; } /* Red 100 */
+
+            /* Ajuste de Contraste para Dark Mode */
+            .dark .bg-evento-azul { background-color: rgba(59, 130, 246, 0.2) !important; }
+            .dark .bg-evento-laranja { background-color: rgba(249, 115, 22, 0.2) !important; }
+            .dark .bg-evento-vermelho { background-color: rgba(239, 68, 68, 0.2) !important; }
+
+            /* === SELECIONADO (Anel de Foco) === */
+            .dia-selecionado {
+                box-shadow: 0 0 0 3px white, 0 0 0 5px #3b82f6 !important; /* Anel Duplo */
+                z-index: 30; /* Fica na frente de tudo */
+            }
+            /* Se hoje for selecionado, mantém o azul mas adiciona o anel */
+            .fc-day-today.dia-selecionado .fc-daygrid-day-frame {
+                background-color: #2563eb !important; /* Azul mais escuro */
+            }
+        </style>
     </x-filament::section>
 </x-filament-widgets::widget>
