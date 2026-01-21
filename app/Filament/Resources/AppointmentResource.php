@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\AppointmentResource\Pages;
 use App\Models\Appointment;
 use App\Services\BookingService;
+use App\Services\PaymentService;
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -15,8 +16,8 @@ use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
+use Filament\Tables\Actions\Action; // Certifique-se de que esta importação existe
 use Filament\Tables\Actions\BulkAction;
-use Filament\Tables\Columns\BadgeColumn; // Certifique-se de que esta importação existe
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -157,7 +158,7 @@ class AppointmentResource extends Resource
 
                 TextColumn::make('status')
                     ->label('Status')
-                    ->badge() 
+                    ->badge()
                     ->formatStateUsing(fn(string $state): string => match ($state) {
                         'pending'   => 'Pendente',
                         'confirmed' => 'Confirmado',
@@ -202,6 +203,41 @@ class AppointmentResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+
+                Action::make('pay')
+                    ->label('Pagar Pix')
+                    ->icon('heroicon-o-qr-code')
+                    ->color('success')
+                // Só mostra se não estiver confirmado ainda
+                    ->visible(fn(Appointment $record) => $record->status !== 'confirmed')
+                    ->modalHeading('Finalizar Pagamento')
+                    ->modalwidth('md')
+                    ->modalSubmitAction(false) // Remove botão de "Confirmar" (não precisa)
+                    ->modalCancelAction(fn($action) => $action->label('Fechar'))
+
+                // 🚀 O PULO DO GATO: Gera o Pix na hora que abre o modal
+                // ...
+                    ->modalContent(function (Appointment $record, PaymentService $service) {
+                        if (empty($record->pix_copy_paste) || $record->payment_status === 'cancelled') {
+                            $result = $service->createPixPayment($record);
+
+                            // SE DER ERRO, PARE TUDO E AVISE
+                            if (! $result['success']) {
+                                \Filament\Notifications\Notification::make()
+                                    ->title('Erro no Mercado Pago')
+                                    ->body($result['error'] ?? 'Erro desconhecido ao gerar Pix.')
+                                    ->danger()
+                                    ->persistent()
+                                    ->send();
+
+                                return view('filament.payments.error-modal', ['error' => $result['error']]); // Vamos criar esse view simples
+                            }
+
+                            $record->refresh();
+                        }
+
+                        return view('filament.payments.pix-modal', ['record' => $record]);
+                    }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

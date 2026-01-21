@@ -11,6 +11,7 @@
         "laravel/framework": "^11",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
+        "mercadopago/dx-php": "^3.8",
         "saade/filament-fullcalendar": "^3.0"
     },
     "require-dev": {
