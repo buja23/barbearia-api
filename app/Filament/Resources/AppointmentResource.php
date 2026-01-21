@@ -52,7 +52,7 @@ class AppointmentResource extends Resource
                             ->live()
                             ->native(false)
                             ->displayFormat('d/m/Y')
-                            ->closeOnDateSelect()
+                            ->closeOnDateSelection()
                             ->dehydrated(false),
 
                         Select::make('appointment_time')

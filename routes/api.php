@@ -9,6 +9,7 @@ use App\Http\Controllers\CalendarController;
 use Illuminate\Http\Request; // CORREÇÃO: Import necessário para a rota /user
 use Illuminate\Support\Facades\Route;
 use \App\Http\Controllers\Api\PlanController;
+use App\Http\Controllers\Api\WebhookController;
 
 
 /* --- Rotas Públicas --- */
@@ -19,6 +20,9 @@ Route::get('/plans', [PlanController::class, 'index']);
 Route::get('/services', [ServiceController::class, 'index']);
 Route::get('/barbers', [BarberController::class, 'index']);
 Route::get('/barbershops/{slug}', [BarbershopController::class, 'show']);
+
+// Rota pública para o Mercado Pago (POST)
+Route::post('/webhooks/mercadopago', [WebhookController::class, 'handle']);
 
 /* --- Rotas do Calendário (Admin/Interno) --- */
 Route::get('/calendar/events', [CalendarController::class, 'index']);

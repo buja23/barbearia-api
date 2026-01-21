@@ -13,7 +13,7 @@ class PaymentService
 {
     public function __construct()
     {
-        // Inicializa a SDK v3
+        // Garante que o token venha do .env
         MercadoPagoConfig::setAccessToken(config('services.mercadopago.token', env('MERCADO_PAGO_ACCESS_TOKEN')));
     }
 
@@ -25,33 +25,50 @@ class PaymentService
         try {
             $client = new PaymentClient();
 
-            // Monta o Payload da Requisição
+            // Proteção: Preço deve ser positivo
+            if ($appointment->total_price <= 0) {
+                return ['success' => false, 'error' => 'Valor do agendamento inválido (R$ 0,00).'];
+            }
+
+            // --- AQUI ESTAVA O ERRO ---
+            // O Mercado Pago exige CPF para testes de Pix
+            // E o email não pode ser repetido/igual ao do vendedor
+            
             $request = [
                 "transaction_amount" => (float) $appointment->total_price,
-                "description" => "Corte Barbearia - Agendamento #" . $appointment->id,
+                "description" => "Corte #" . $appointment->id,
                 "payment_method_id" => "pix",
                 "payer" => [
-                    "email" => $appointment->user->email ?? 'cliente@barbearia.com',
-                    "first_name" => $appointment->client_name ?? 'Cliente',
+                    // TRUQUE 1: Email único a cada tentativa para não travar no Sandbox
+                    "email" => "teste_user_" . uniqid() . "@test.com",
+                    
+                    "first_name" => "Cliente",
+                    "last_name" => "Teste",
+                    
+                    // TRUQUE 2: CPF Válido de Teste (OBRIGATÓRIO)
+                    "identification" => [
+                        "type" => "CPF",
+                        "number" => "19119119100" 
+                    ]
                 ]
             ];
 
-            // Gera uma chave de idempotência para evitar pagamentos duplicados
-            $idempotencyKey = (string) $appointment->id . '_' . time();
+            // Chave única para evitar duplicidade no MP
+            $idempotencyKey = (string) $appointment->id . '_' . uniqid();
+            
             $requestOptions = new RequestOptions();
             $requestOptions->setCustomHeaders(["x-idempotency-key" => $idempotencyKey]);
 
             // Faz a chamada à API
             $payment = $client->create($request, $requestOptions);
 
-            // Verifica se gerou o QR Code
             if (!isset($payment->point_of_interaction->transaction_data)) {
-                throw new \Exception('O Mercado Pago não retornou os dados do Pix.');
+                throw new \Exception('API não retornou dados do Pix.');
             }
 
             $pixData = $payment->point_of_interaction->transaction_data;
 
-            // Atualiza o agendamento
+            // Salva no banco
             $appointment->update([
                 'payment_id' => (string) $payment->id,
                 'payment_status' => $payment->status,
@@ -67,12 +84,16 @@ class PaymentService
             ];
 
         } catch (MPApiException $e) {
-            // Erro específico da API do Mercado Pago
-            Log::error('Erro MercadoPago API: ' . json_encode($e->getApiResponse()->getContent()));
-            return ['success' => false, 'error' => 'Erro ao processar pagamento.'];
+            // Pega a resposta JSON real do erro
+            $response = $e->getApiResponse()->getContent();
+            Log::error('Erro MercadoPago (Payload): ' . json_encode($response));
+            
+            // Tenta pegar mensagem amigável
+            $msg = $response['message'] ?? 'Erro desconhecido na API';
+            return ['success' => false, 'error' => "Mercado Pago recusou: $msg"];
+            
         } catch (\Exception $e) {
-            // Erros genéricos
-            Log::error('Erro PaymentService: ' . $e->getMessage());
+            Log::error('Erro Interno Payment: ' . $e->getMessage());
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
