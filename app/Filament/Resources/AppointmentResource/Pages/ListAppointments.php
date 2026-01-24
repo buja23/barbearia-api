@@ -5,6 +5,8 @@ use App\Filament\Resources\AppointmentResource;
 use App\Filament\Widgets\CalendarWidget;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
+use Filament\Resources\Components\Tab;
+use Illuminate\Database\Eloquent\Builder;
 use Livewire\Attributes\On;
 
 class ListAppointments extends ListRecords
@@ -22,6 +24,30 @@ class ListAppointments extends ListRecords
     {
         return [
             CalendarWidget::class,
+        ];
+    }
+
+public function getTabs(): array
+    {
+        return [
+            'agenda' => Tab::make('Agenda Aberta')
+                ->icon('heroicon-o-calendar')
+                ->badge(
+                    $this->getModel()::whereIn('status', ['pending', 'confirmed'])->count()
+                )
+                ->badgeColor('warning')
+                ->modifyQueryUsing(fn (Builder $query) => $query->whereIn('status', ['pending', 'confirmed'])),
+
+            'historico' => Tab::make('Histórico (Pagos/Faltas)')
+                ->icon('heroicon-o-archive-box')
+                // 👇 AQUI ESTÁ A MUDANÇA SOLICITADA
+                ->modifyQueryUsing(fn (Builder $query) => $query
+                    ->where(function ($q) {
+                        $q->where('payment_status', 'approved') // 1. Pagamento Confirmado
+                          ->orWhere('status', 'no_show');       // 2. OU Faltou
+                    })
+                    ->orderBy('scheduled_at', 'desc') // Ordena do mais recente para o antigo
+                ),
         ];
     }
 

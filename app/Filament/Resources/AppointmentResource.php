@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\AppointmentResource\Pages;
@@ -16,7 +17,7 @@ use Filament\Forms\Get;
 use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Actions\Action; // Certifique-se de que esta importação existe
+use Filament\Tables\Actions\Action;
 use Filament\Tables\Actions\BulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
@@ -96,7 +97,6 @@ class AppointmentResource extends Resource
                                 if ($service) {
                                     $set('total_price', $service->price);
                                 }
-
                             })
                             ->label('Serviço'),
 
@@ -155,12 +155,39 @@ class AppointmentResource extends Resource
                 TextColumn::make('total_price')
                     ->label('Preço')
                     ->money('BRL'),
+
+                // Coluna oculta para controle do barbeiro
                 TextColumn::make('barber_commission_value')
                     ->label('Minha Comissão')
                     ->money('BRL')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
+                // --- COLUNA VISUAL DE PAGAMENTO ---
+                TextColumn::make('payment_status')
+                    ->label('Pagamento')
+                    ->badge()
+                    ->formatStateUsing(fn(string $state): string => match ($state) {
+                        'approved' => 'Aprovado',
+                        'pending'  => 'Pendente',
+                        'rejected' => 'Recusado',
+                        default    => 'Aguardando',
+                    })
+                    ->color(fn(string $state): string => match ($state) {
+                        'approved' => 'success', // Verde
+                        'pending'  => 'warning', // Amarelo
+                        'rejected' => 'danger',  // Vermelho
+                        default    => 'gray',
+                    })
+                    ->icon(fn(string $state): string => match ($state) {
+                        'approved' => 'heroicon-o-check-circle',
+                        'pending'  => 'heroicon-o-clock',
+                        'rejected' => 'heroicon-o-x-circle',
+                        default    => 'heroicon-o-question-mark-circle',
+                    })
+                    ->sortable(),
+                
+                // Status do Agendamento
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
@@ -169,7 +196,7 @@ class AppointmentResource extends Resource
                         'confirmed' => 'Confirmado',
                         'cancelled' => 'Cancelado',
                         'completed' => 'Concluído',
-                        'no_show'   => 'Faltou', // Adicionado
+                        'no_show'   => 'Faltou',
                         default     => $state,
                     })
                     ->color(fn(string $state): string => match ($state) {
@@ -177,7 +204,7 @@ class AppointmentResource extends Resource
                         'confirmed' => 'info',
                         'cancelled' => 'danger',
                         'completed' => 'success',
-                        'no_show'   => 'danger', // Adicionado (Vermelho para falta)
+                        'no_show'   => 'danger',
                         default     => 'gray',
                     }),
             ])
@@ -190,9 +217,9 @@ class AppointmentResource extends Resource
                         'confirmed' => 'Confirmado',
                         'completed' => 'Concluído',
                         'cancelled' => 'Cancelado',
+                        'no_show'   => 'Faltou',
                     ]),
 
-                // Senior Move: Adicionando filtro por barbeiro para facilitar a gestão
                 SelectFilter::make('barber_id')
                     ->label('Barbeiro')
                     ->relationship('barber', 'name'),
@@ -208,73 +235,75 @@ class AppointmentResource extends Resource
                             ->when($data['data_final'], fn($query, $date) => $query->whereDate('scheduled_at', '<=', $date));
                     }),
             ])
+            // --- AÇÕES INDIVIDUAIS (POR LINHA) ---
             ->actions([
                 Tables\Actions\EditAction::make(),
 
-                Action::make('pay')
-                    ->label('Pagar Pix')
-                    ->icon('heroicon-o-qr-code')
-                    ->color('success')
-                // Só mostra se não estiver confirmado ainda
-                    ->visible(fn(Appointment $record) => $record->status !== 'confirmed')
-                    ->modalHeading('Finalizar Pagamento')
-                    ->modalwidth('md')
-                    ->modalSubmitAction(false) // Remove botão de "Confirmar" (não precisa)
-                    ->modalCancelAction(fn($action) => $action->label('Fechar'))
+                // GRUPO DE PAGAMENTO (Botão ou Check Visual)
+                Tables\Actions\ActionGroup::make([
+                    
+                    // 1. Botão de PAGAR (Aparece se Pendente/Recusado)
+                    Action::make('pay')
+                        ->label('Pagar Pix')
+                        ->icon('heroicon-o-qr-code')
+                        ->color('warning')
+                        ->visible(fn(Appointment $record) => $record->payment_status !== 'approved')
+                        ->modalHeading('Finalizar Pagamento')
+                        ->modalSubmitAction(false) 
+                        ->modalCancelAction(fn($action) => $action->label('Fechar'))
+                        ->modalContent(function (Appointment $record, PaymentService $service) {
+                            if (empty($record->pix_copy_paste) || $record->payment_status === 'cancelled') {
+                                $result = $service->createPixPayment($record);
 
-                // 🚀 O PULO DO GATO: Gera o Pix na hora que abre o modal
-                // ...
-                    ->modalContent(function (Appointment $record, PaymentService $service) {
-                        if (empty($record->pix_copy_paste) || $record->payment_status === 'cancelled') {
-                            $result = $service->createPixPayment($record);
-
-                            // SE DER ERRO, PARE TUDO E AVISE
-                            if (! $result['success']) {
-                                \Filament\Notifications\Notification::make()
-                                    ->title('Erro no Mercado Pago')
-                                    ->body($result['error'] ?? 'Erro desconhecido ao gerar Pix.')
-                                    ->danger()
-                                    ->persistent()
-                                    ->send();
-
-                                return view('filament.payments.error-modal', ['error' => $result['error']]); // Vamos criar esse view simples
+                                if (! $result['success']) {
+                                    \Filament\Notifications\Notification::make()
+                                        ->title('Erro no Mercado Pago')
+                                        ->body($result['error'] ?? 'Erro desconhecido')
+                                        ->danger()
+                                        ->send();
+                                    return view('filament.payments.error-modal', ['error' => $result['error']]);
+                                }
+                                $record->refresh();
                             }
+                            return view('filament.payments.pix-modal', ['record' => $record]);
+                        }),
 
-                            $record->refresh();
-                        }
+                    // 2. Indicador Visual (Aparece se APROVADO)
+                    Action::make('paid_indicator')
+                        ->label('Pago')
+                        ->icon('heroicon-s-check-badge')
+                        ->color('success')
+                        ->disabled() 
+                        ->visible(fn(Appointment $record) => $record->payment_status === 'approved'),
 
-                        return view('filament.payments.pix-modal', ['record' => $record]);
-                    }),
+                ])->link(), // Link deixa os ícones lado a lado
 
+                // Botão de FALTOU
                 Action::make('noShow')
                     ->label('Faltou')
                     ->icon('heroicon-o-user-minus')
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->visible(fn(Appointment $record) => $record->status === 'confirmed') // Só aparece se estava confirmado
+                    ->visible(fn(Appointment $record) => $record->status === 'confirmed')
                     ->action(function (Appointment $record) {
                         $record->update(['status' => 'no_show']);
-
-                        // Penalidade para assinante
                         if ($record->user?->subscription) {
                             $record->user->subscription->increment('uses_this_month');
                         }
-
                         \Filament\Notifications\Notification::make()
                             ->title('Marcado como No-Show')
                             ->danger()
                             ->send();
                     }),
             ])
+            // --- AÇÕES EM MASSA (VÁRIOS DE UMA VEZ) ---
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
+                    
                     BulkAction::make('alterarStatus')
-                        ->label('Alterar Status em Massa')
+                        ->label('Alterar Status')
                         ->icon('heroicon-o-arrow-path')
-                        ->action(function (Collection $records, array $data) {
-                            $records->each(fn($record) => $record->update(['status' => $data['status']]));
-                        })
                         ->form([
                             Select::make('status')
                                 ->label('Novo Status')
@@ -283,10 +312,12 @@ class AppointmentResource extends Resource
                                     'completed' => 'Concluído',
                                     'cancelled' => 'Cancelado',
                                 ])->required(),
-                        ]),
+                        ])
+                        ->action(function (Collection $records, array $data) {
+                            $records->each(fn($record) => $record->update(['status' => $data['status']]));
+                        }),
                 ]),
             ]);
-
     }
 
     public static function getPages(): array
@@ -298,7 +329,6 @@ class AppointmentResource extends Resource
         ];
     }
 
-    // Adicione (ou atualize) o método getWidgets no final da classe
     public static function getWidgets(): array
     {
         return [

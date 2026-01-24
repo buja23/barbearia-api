@@ -15,6 +15,8 @@ class AppointmentController extends Controller
 {
     public function getAvailableSlots(Request $request, BookingService $service)
     {
+
+    
         $request->validate([
             'barber_id'  => 'required|exists:barbers,id',
             'date'       => 'required|date_format:Y-m-d',
@@ -39,27 +41,34 @@ class AppointmentController extends Controller
         $user    = $request->user();
         $service = Service::findOrFail($data['service_id']);
 
-        // 1. Verificação de conflito
-        $exists = Appointment::where('barber_id', $data['barber_id'])
-            ->where('scheduled_at', $data['scheduled_at'])
-            ->whereIn('status', ['confirmed', 'pending'])
-            ->exists();
+        // 1. Busca a assinatura e o plano para checar o limite
+        $subscription = $user->activeSubscription;
+        $plan         = $subscription ? $subscription->plan : null;
 
-        if ($exists) {
-            return response()->json(['message' => 'Horário ocupado.'], 422);
+        // 2. Verifica se ainda tem saldo de cortes (Uso < Limite)
+        $hasBalance = $subscription && $plan && ($subscription->uses_this_month < $plan->monthly_limit);
+
+        // 3. Define a Mensagem e o Preço
+        if ($subscription && $hasBalance) {
+            $finalPrice = 0.00;
+            $message    = 'Agendado via assinatura!';
+            $notes      = 'Agendado via assinatura';
+        } elseif ($subscription && ! $hasBalance) {
+            // Se tem assinatura mas NÃO tem saldo, ele paga o valor normal
+            $finalPrice = $service->price;
+            $message    = 'Agendado com sucesso! (Atenção: Limite do plano atingido, este serviço será cobrado à parte).';
+            $notes      = 'Limite da assinatura atingido - Cobrança avulsa';
+        } else {
+            // Cliente sem assinatura
+            $finalPrice = $service->price;
+            $message    = 'Agendado com sucesso!';
+            $notes      = null;
         }
-
-        // 2. Lógica de Assinatura (Módulo 4)
-        // Se você ainda não criou a relação no User.php, o código abaixo dará erro.
-        $subscription          = $user->activeSubscription;
-        $isSubscriptionBooking = $subscription && $subscription->remaining_cuts > 0;
-        $finalPrice            = $isSubscriptionBooking ? 0.00 : $service->price;
 
         $start = Carbon::parse($data['scheduled_at']);
         $end   = $start->copy()->addMinutes($service->duration_minutes);
 
-        // 3. Gravação com Transação
-        return DB::transaction(function () use ($data, $user, $service, $end, $finalPrice, $subscription, $isSubscriptionBooking) {
+        return DB::transaction(function () use ($data, $user, $service, $end, $finalPrice, $subscription, $hasBalance, $message, $notes) {
             $appointment = Appointment::create([
                 'barber_id'    => $data['barber_id'],
                 'service_id'   => $data['service_id'],
@@ -70,17 +79,21 @@ class AppointmentController extends Controller
                 'end_at'       => $end,
                 'total_price'  => $finalPrice,
                 'status'       => 'confirmed',
-                'notes'        => $isSubscriptionBooking ? 'Agendado via assinatura' : null,
+                'notes'        => $notes,
             ]);
 
-            if ($isSubscriptionBooking) {
-                $subscription->decrement('remaining_cuts');
+            // Se usou a assinatura, incrementamos o contador de uso imediatamente
+            if ($subscription && $hasBalance) {
+                $subscription->increment('uses_this_month');
             }
 
             return response()->json([
-                'message'        => $isSubscriptionBooking ? 'Agendado via assinatura!' : 'Agendado com sucesso!',
-                'appointment'    => $appointment,
-                'remaining_cuts' => $isSubscriptionBooking ? $subscription->remaining_cuts : null,
+                'message'     => $message, // O Front-end vai ler este campo
+                'appointment' => $appointment,
+                'usage'       => $subscription ? [
+                    'current' => $subscription->uses_this_month,
+                    'limit'   => $subscription->plan->monthly_limit,
+                ] : null,
             ], 201);
         });
     }
@@ -122,5 +135,33 @@ class AppointmentController extends Controller
                 'refunded' => $appointment->total_price == 0.00,
             ]);
         });
+    }
+
+    public function index(Request $request)
+    {
+        $user = $request->user();
+
+        // Buscamos todos os agendamentos do cliente ordenados do mais recente para o mais antigo
+        $appointments = Appointment::with([
+                'barber:id,name,avatar', // Trazemos só o necessário do barbeiro
+                'service:id,name,price'  // Trazemos o nome do serviço
+            ])
+            ->where('user_id', $user->id)
+            ->orderBy('scheduled_at', 'desc')
+            ->get();
+
+        // Separamos o joio do trigo (Futuros vs Passados)
+        $upcoming = $appointments->filter(function ($app) {
+            return $app->scheduled_at >= now() && !in_array($app->status, ['cancelled', 'no_show', 'completed']);
+        })->values();
+
+        $history = $appointments->filter(function ($app) {
+            return $app->scheduled_at < now() || in_array($app->status, ['cancelled', 'no_show', 'completed']);
+        })->values();
+
+        return response()->json([
+            'upcoming' => $upcoming, // Lista de agendamentos futuros
+            'history'  => $history   // Lista de histórico completo
+        ]);
     }
 }
