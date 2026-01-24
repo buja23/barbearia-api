@@ -23,6 +23,7 @@ class Appointment extends Model
         'pix_copy_paste',
         'pix_qr_code_url',
         'reminder_sent',
+        'barber_commission_value',
     ];
 
     protected $casts = [
@@ -47,4 +48,22 @@ class Appointment extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    protected static function booted()
+{
+    static::updating(function ($appointment) {
+        // Quando o status mudar para 'completed', calculamos a comissão
+        if ($appointment->isDirty('status') && in_array($appointment->status, ['completed', 'no_show'])) {
+                $barber = $appointment->barber;
+                if ($barber && $barber->commission_percentage) {
+                    $appointment->barber_commission_value = ($appointment->total_price * $barber->commission_percentage) / 100;
+                }
+            
+            // Se for assinante, incrementa o uso do mês
+            if ($appointment->user && $appointment->user->subscription) {
+                $appointment->user->subscription->increment('uses_this_month');
+            }
+        }
+    });
+}
 }

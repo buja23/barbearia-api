@@ -88,4 +88,23 @@ class BookingService
         // E o fim do novo é depois do início do ocupado.
         return ($slotStart < $busyEndStr && $slotEnd > $busyStartStr);
     }
+
+    public function checkSubscriptionLimit(User $user)
+{
+    $subscription = $user->subscription;
+
+    // Se não tiver assinatura ou estiver expirada, ele agenda como avulso (normal)
+    if (!$subscription || $subscription->status !== 'active') {
+        return true;
+    }
+
+    $plan = $subscription->plan;
+
+    // Se já usou tudo o que podia no mês
+    if ($subscription->uses_this_month >= $plan->monthly_limit) {
+        throw new \Exception("Limite mensal de agendamentos atingido para o seu plano.");
+    }
+
+    return true;
+}
 }

@@ -1,10 +1,8 @@
 <?php
-
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\BarberResource\Pages;
 use App\Models\Barber;
-use Filament\Forms;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
@@ -78,9 +76,19 @@ class BarberResource extends Resource
                                     ->displayFormat('H:i')
                                     ->after('lunch_start'), // Validação: Fim deve ser após o início
                             ])->columns(2),
-                    ]),
-            ]);
-    }
+
+                        TextInput::make('commission_percentage')
+                            ->label('Porcentagem da Comissão')
+                            ->numeric()
+                            ->suffix('%')
+                            ->default(50.00)
+                            ->minValue(0)
+                            ->maxValue(100)
+                            ->required(),
+                    
+            ]),
+    ]);
+}
 
     public static function table(Table $table): Table
     {
@@ -129,9 +137,9 @@ class BarberResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListBarbers::route('/'),
+            'index'  => Pages\ListBarbers::route('/'),
             'create' => Pages\CreateBarber::route('/create'),
-            'edit' => Pages\EditBarber::route('/{record}/edit'),
+            'edit'   => Pages\EditBarber::route('/{record}/edit'),
         ];
     }
 }

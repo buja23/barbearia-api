@@ -155,6 +155,11 @@ class AppointmentResource extends Resource
                 TextColumn::make('total_price')
                     ->label('Preço')
                     ->money('BRL'),
+                TextColumn::make('barber_commission_value')
+                    ->label('Minha Comissão')
+                    ->money('BRL')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('status')
                     ->label('Status')
@@ -164,6 +169,7 @@ class AppointmentResource extends Resource
                         'confirmed' => 'Confirmado',
                         'cancelled' => 'Cancelado',
                         'completed' => 'Concluído',
+                        'no_show'   => 'Faltou', // Adicionado
                         default     => $state,
                     })
                     ->color(fn(string $state): string => match ($state) {
@@ -171,6 +177,7 @@ class AppointmentResource extends Resource
                         'confirmed' => 'info',
                         'cancelled' => 'danger',
                         'completed' => 'success',
+                        'no_show'   => 'danger', // Adicionado (Vermelho para falta)
                         default     => 'gray',
                     }),
             ])
@@ -238,6 +245,26 @@ class AppointmentResource extends Resource
 
                         return view('filament.payments.pix-modal', ['record' => $record]);
                     }),
+
+                Action::make('noShow')
+                    ->label('Faltou')
+                    ->icon('heroicon-o-user-minus')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->visible(fn(Appointment $record) => $record->status === 'confirmed') // Só aparece se estava confirmado
+                    ->action(function (Appointment $record) {
+                        $record->update(['status' => 'no_show']);
+
+                        // Penalidade para assinante
+                        if ($record->user?->subscription) {
+                            $record->user->subscription->increment('uses_this_month');
+                        }
+
+                        \Filament\Notifications\Notification::make()
+                            ->title('Marcado como No-Show')
+                            ->danger()
+                            ->send();
+                    }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -259,6 +286,7 @@ class AppointmentResource extends Resource
                         ]),
                 ]),
             ]);
+
     }
 
     public static function getPages(): array
