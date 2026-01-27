@@ -8,6 +8,7 @@ use MercadoPago\Client\Payment\PaymentClient;
 use MercadoPago\Client\Common\RequestOptions;
 use MercadoPago\MercadoPagoConfig;
 use MercadoPago\Exceptions\MPApiException;
+use App\Models\Order;
 
 class PaymentService
 {
@@ -97,4 +98,40 @@ class PaymentService
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
+
+    public function createOrderPix(Order $order): array
+    {
+        try {
+            $client = new PaymentClient();
+
+            $paymentData = [
+                "transaction_amount" => (float) $order->total_amount,
+                "description"        => "Venda #{$order->id} - Produtos",
+                "payment_method_id"  => "pix",
+                "payer" => [
+                    "email" => "cliente@balcao.com", // Email genérico para venda balcão
+                ]
+            ];
+
+            $payment = $client->create($paymentData);
+
+            if ($payment->id) {
+                $order->update([
+                    'payment_id'       => $payment->id,
+                    'status'           => $payment->status === 'approved' ? 'approved' : 'pending',
+                    'pix_copy_paste'   => $payment->point_of_interaction->transaction_data->qr_code,
+                    'qr_code_base64'   => $payment->point_of_interaction->transaction_data->qr_code_base64,
+                ]);
+
+                return ['success' => true];
+            }
+
+            return ['success' => false, 'error' => 'Falha ao obter ID do pagamento'];
+
+        } catch (\Exception $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+
 }
