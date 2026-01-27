@@ -15,6 +15,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Forms\Set;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Actions\Action;
@@ -28,10 +29,10 @@ use Illuminate\Database\Eloquent\Collection;
 
 class AppointmentResource extends Resource
 {
-    protected static ?string $model            = Appointment::class;
-    protected static ?string $navigationIcon   = 'heroicon-o-calendar-days';
-    protected static ?string $navigationLabel  = 'Agendamentos';
-    protected static ?string $modelLabel       = 'Agendamento';
+    protected static ?string $model = Appointment::class;
+    protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
+    protected static ?string $navigationLabel = 'Agendamentos';
+    protected static ?string $modelLabel = 'Agendamento';
     protected static ?string $pluralModelLabel = 'Agendamentos';
 
     public static function form(Form $form): Form
@@ -60,11 +61,11 @@ class AppointmentResource extends Resource
                             ->label('Horários Livres')
                             ->required()
                             ->options(function (Get $get, BookingService $service) {
-                                $barberId  = $get('barber_id');
-                                $date      = $get('appointment_date');
+                                $barberId = $get('barber_id');
+                                $date = $get('appointment_date');
                                 $serviceId = $get('service_id');
 
-                                if (! $barberId || ! $date || ! $serviceId) {
+                                if (!$barberId || !$date || !$serviceId) {
                                     return [];
                                 }
 
@@ -109,7 +110,7 @@ class AppointmentResource extends Resource
                         Select::make('status')
                             ->label('Status do Agendamento')
                             ->options([
-                                'pending'   => 'Pendente',
+                                'pending' => 'Pendente',
                                 'confirmed' => 'Confirmado',
                                 'cancelled' => 'Cancelado',
                                 'completed' => 'Concluído',
@@ -156,56 +157,63 @@ class AppointmentResource extends Resource
                     ->label('Preço')
                     ->money('BRL'),
 
-                // Coluna oculta para controle do barbeiro
                 TextColumn::make('barber_commission_value')
                     ->label('Minha Comissão')
                     ->money('BRL')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                // --- COLUNA VISUAL DE PAGAMENTO ---
                 TextColumn::make('payment_status')
                     ->label('Pagamento')
                     ->badge()
                     ->formatStateUsing(fn(string $state): string => match ($state) {
                         'approved' => 'Aprovado',
-                        'pending'  => 'Pendente',
+                        'pending' => 'Pendente',
                         'rejected' => 'Recusado',
-                        default    => 'Aguardando',
+                        default => 'Aguardando',
                     })
                     ->color(fn(string $state): string => match ($state) {
-                        'approved' => 'success', // Verde
-                        'pending'  => 'warning', // Amarelo
-                        'rejected' => 'danger',  // Vermelho
-                        default    => 'gray',
+                        'approved' => 'success',
+                        'pending' => 'warning',
+                        'rejected' => 'danger',
+                        default => 'gray',
                     })
                     ->icon(fn(string $state): string => match ($state) {
                         'approved' => 'heroicon-o-check-circle',
-                        'pending'  => 'heroicon-o-clock',
+                        'pending' => 'heroicon-o-clock',
                         'rejected' => 'heroicon-o-x-circle',
-                        default    => 'heroicon-o-question-mark-circle',
+                        default => 'heroicon-o-question-mark-circle',
                     })
                     ->sortable(),
-                
-                // Status do Agendamento
+
+                // === STATUS CORRIGIDO ===
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
                     ->formatStateUsing(fn(string $state): string => match ($state) {
-                        'pending'   => 'Pendente',
+                        'pending' => 'Pendente',
                         'confirmed' => 'Confirmado',
                         'cancelled' => 'Cancelado',
                         'completed' => 'Concluído',
-                        'no_show'   => 'Faltou',
-                        default     => $state,
+                        'no_show' => 'Faltou',
+                        default => $state,
                     })
-                    ->color(fn(string $state): string => match ($state) {
-                        'pending'   => 'warning',
-                        'confirmed' => 'info',
-                        'cancelled' => 'danger',
-                        'completed' => 'success',
-                        'no_show'   => 'danger',
-                        default     => 'gray',
+                    ->color('gray') // Base cinza para não conflitar com o estilo customizado
+                    ->extraAttributes(function (Appointment $record) {
+                        // Cores hexadecimais para o estilo CSS
+                        $color = match ($record->status) {
+                            'completed' => '#22c55e', // Verde
+                            'pending' => '#f59e0b',   // Laranja
+                            'no_show' => '#ef4444',   // Vermelho
+                            'confirmed' => '#3b82f6', // Azul
+                            'cancelled' => '#9ca3af', // Cinza
+                            default => '#9ca3af',
+                        };
+
+                        return [
+                            'class' => 'border-l-4 rounded-none px-3 py-1 shadow-none ring-0',
+                            'style' => "border-left-color: {$color} !important; background-color: transparent !important;",
+                        ];
                     }),
             ])
             ->defaultSort('scheduled_at', 'desc')
@@ -213,11 +221,11 @@ class AppointmentResource extends Resource
                 SelectFilter::make('status')
                     ->label('Status')
                     ->options([
-                        'pending'   => 'Pendente',
+                        'pending' => 'Pendente',
                         'confirmed' => 'Confirmado',
                         'completed' => 'Concluído',
                         'cancelled' => 'Cancelado',
-                        'no_show'   => 'Faltou',
+                        'no_show' => 'Faltou',
                     ]),
 
                 SelectFilter::make('barber_id')
@@ -235,28 +243,24 @@ class AppointmentResource extends Resource
                             ->when($data['data_final'], fn($query, $date) => $query->whereDate('scheduled_at', '<=', $date));
                     }),
             ])
-            // --- AÇÕES INDIVIDUAIS (POR LINHA) ---
             ->actions([
                 Tables\Actions\EditAction::make(),
 
-                // GRUPO DE PAGAMENTO (Botão ou Check Visual)
+                // GRUPO DE PAGAMENTO
                 Tables\Actions\ActionGroup::make([
-                    
-                    // 1. Botão de PAGAR (Aparece se Pendente/Recusado)
                     Action::make('pay')
                         ->label('Pagar Pix')
                         ->icon('heroicon-o-qr-code')
                         ->color('warning')
                         ->visible(fn(Appointment $record) => $record->payment_status !== 'approved')
                         ->modalHeading('Finalizar Pagamento')
-                        ->modalSubmitAction(false) 
+                        ->modalSubmitAction(false)
                         ->modalCancelAction(fn($action) => $action->label('Fechar'))
                         ->modalContent(function (Appointment $record, PaymentService $service) {
                             if (empty($record->pix_copy_paste) || $record->payment_status === 'cancelled') {
                                 $result = $service->createPixPayment($record);
-
                                 if (! $result['success']) {
-                                    \Filament\Notifications\Notification::make()
+                                    Notification::make()
                                         ->title('Erro no Mercado Pago')
                                         ->body($result['error'] ?? 'Erro desconhecido')
                                         ->danger()
@@ -268,39 +272,50 @@ class AppointmentResource extends Resource
                             return view('filament.payments.pix-modal', ['record' => $record]);
                         }),
 
-                    // 2. Indicador Visual (Aparece se APROVADO)
+                    Action::make('mark_paid_cash')
+                        ->label('Pago em Dinheiro')
+                        ->icon('heroicon-o-banknotes')
+                        ->color('success')
+                        ->visible(fn(Appointment $record) => $record->payment_status !== 'approved')
+                        ->requiresConfirmation()
+                        ->action(fn(Appointment $record) => $record->update(['payment_status' => 'approved', 'payment_method' => 'cash'])),
+
                     Action::make('paid_indicator')
                         ->label('Pago')
                         ->icon('heroicon-s-check-badge')
                         ->color('success')
-                        ->disabled() 
+                        ->disabled()
                         ->visible(fn(Appointment $record) => $record->payment_status === 'approved'),
-
-                ])->link(), // Link deixa os ícones lado a lado
+                ])->link(),
 
                 // Botão de FALTOU
-                Action::make('noShow')
+                Action::make('mark_no_show')
                     ->label('Faltou')
-                    ->icon('heroicon-o-user-minus')
+                    ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->visible(fn(Appointment $record) => $record->status === 'confirmed')
+                    ->modalHeading('Marcar Falta do Cliente')
                     ->action(function (Appointment $record) {
                         $record->update(['status' => 'no_show']);
                         if ($record->user?->subscription) {
-                            $record->user->subscription->increment('uses_this_month');
+                            // Lógica de assinatura (comentada se não estiver 100% pronta)
+                            // $record->user->subscription->increment('uses_this_month');
                         }
-                        \Filament\Notifications\Notification::make()
-                            ->title('Marcado como No-Show')
-                            ->danger()
-                            ->send();
-                    }),
+                        Notification::make()->title('Marcado como Faltou')->danger()->send();
+                    })
+                    ->visible(fn(Appointment $record) => !in_array($record->status, ['completed', 'cancelled', 'no_show'])),
+
+                // Botão FINALIZAR
+                Action::make('complete')
+                    ->label('Finalizar')
+                    ->icon('heroicon-o-check')
+                    ->color('success')
+                    ->action(fn(Appointment $record) => $record->update(['status' => 'completed']))
+                    ->visible(fn(Appointment $record) => $record->status === 'confirmed'),
             ])
-            // --- AÇÕES EM MASSA (VÁRIOS DE UMA VEZ) ---
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
-                    
                     BulkAction::make('alterarStatus')
                         ->label('Alterar Status')
                         ->icon('heroicon-o-arrow-path')
@@ -323,9 +338,9 @@ class AppointmentResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => Pages\ListAppointments::route('/'),
+            'index' => Pages\ListAppointments::route('/'),
             'create' => Pages\CreateAppointment::route('/create'),
-            'edit'   => Pages\EditAppointment::route('/{record}/edit'),
+            'edit' => Pages\EditAppointment::route('/{record}/edit'),
         ];
     }
 

@@ -1,10 +1,11 @@
 <?php
+
 namespace App\Filament\Widgets;
 
 use App\Models\Appointment;
+use Carbon\Carbon;
 use Filament\Widgets\Widget;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 
 class CalendarWidget extends Widget
 {
@@ -14,55 +15,60 @@ class CalendarWidget extends Widget
 
     public static function canView(): bool
     {
+        // Oculta no Dashboard principal, aparece só na página de recursos
         return ! request()->routeIs('filament.admin.pages.dashboard');
     }
 
     public function selectDate($date)
     {
         $this->selectedDate = $date;
-        // Simulando um pequeno delay para você ver o Loading Lindo (Remova em produção se quiser)
-        // usleep(300000);
         $this->dispatch('filtrar-data', date: $date);
     }
 
     public function getCalendarEvents(): array
     {
-        // Cacheia a query por 5 minutos para performance instantânea
-        return Cache::remember('calendar_events_' . now()->format('Y-m'), 300, function () {
-
-            // Pega dados do mês atual e arredores
+        // Cacheia por 5 minutos para o calendário carregar instantaneamente
+        return Cache::remember('calendar_events_' . auth()->id(), 300, function () {
+            
+            // 1. Pega dados do mês atual +- 15 dias de margem
             $start = now()->startOfMonth()->subDays(15);
             $end   = now()->endOfMonth()->addDays(15);
 
-            $counts = Appointment::select(
-                DB::raw('DATE(scheduled_at) as date'),
-                DB::raw('count(*) as total')
-            )
+            $appointments = Appointment::query()
                 ->whereBetween('scheduled_at', [$start, $end])
-                ->groupBy('date')
+                ->where('status', '!=', 'cancelled')
                 ->get();
 
-            // Capacidade (Exemplo: 15 cortes/dia)
+            // 2. Agrupa pelo dia (Y-m-d) usando PHP (Funciona no Postgres e MySQL)
+            $grouped = $appointments->groupBy(function ($appointment) {
+                return Carbon::parse($appointment->scheduled_at)->format('Y-m-d');
+            });
+
+            // Configuração de Lotação
             $lotado = 15;
             $medio  = 8;
 
-            // No método getCalendarEvents:
-            return $counts->map(function ($day) use ($lotado, $medio) {
-                                           // Definindo as cores das bolas
-                $class = 'bg-evento-azul'; // Padrão: Bola Azul Claro
+            // 3. Transforma no formato do FullCalendar
+            return $grouped->map(function ($dayAppointments, $dateString) use ($lotado, $medio) {
+                
+                $total = $dayAppointments->count();
+                
+                // Define a cor baseada na lotação
+                $class = 'bg-evento-azul'; // Padrão: Tranquilo
 
-                if ($day->total >= $lotado) {
-                    $class = 'bg-evento-vermelho';
-                } elseif ($day->total >= $medio) {
-                    $class = 'bg-evento-laranja';
+                if ($total >= $lotado) {
+                    $class = 'bg-evento-vermelho'; // Lotado
+                } elseif ($total >= $medio) {
+                    $class = 'bg-evento-laranja'; // Médio
                 }
 
                 return [
-                    'start'      => $day->date,
-                    'display'    => 'background', // Isso cria a "Bola" atrás do número
-                    'classNames' => [$class],
+                    'start'      => $dateString,
+                    'display'    => 'background', // Cria a "Bola" de fundo
+                    'classNames' => [$class],     // Aplica a nossa classe CSS
+                    'allDay'     => true,
                 ];
-            })->toArray();
+            })->values()->toArray(); 
         });
     }
 }
