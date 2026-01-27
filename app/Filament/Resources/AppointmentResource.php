@@ -237,15 +237,21 @@ public static function table(Table $table): Table
                 ->action(fn(Appointment $record) => $record->update(['status' => 'confirmed']))
                 ->successNotificationTitle('Agendamento Confirmado!'),
 
-            // 2. FINALIZAR (Seu botão existente)
-            Tables\Actions\Action::make('complete')
-                ->label('Concluir')
-                ->icon('heroicon-o-check')
-                ->color('success') // Botão Verde
-                ->button()
-                ->visible(fn(Appointment $record) => $record->status === 'confirmed')
-                ->requiresConfirmation()
-                ->action(fn(Appointment $record) => $record->update(['status' => 'completed'])),
+            // 2. PAGAR EM DINHEIRO (Novo!)
+                Tables\Actions\Action::make('pay_cash')
+                    ->label('Dinheiro')
+                    ->icon('heroicon-o-banknotes') // Ícone de notas
+                    ->color('success') // Verde
+                    ->button()
+                    ->requiresConfirmation()
+                    ->modalHeading('Receber em Dinheiro')
+                    ->modalDescription('Confirmar o recebimento do valor total em dinheiro?')
+                    ->visible(fn(Appointment $record) => $record->payment_status !== 'approved' && $record->status !== 'cancelled')
+                    ->action(fn(Appointment $record) => $record->update([
+                        'payment_status' => 'approved',
+                        'payment_method' => 'cash' // Registra que foi dinheiro
+                    ]))
+                    ->after(fn() => \Filament\Notifications\Notification::make()->title('Pagamento em Dinheiro Confirmado')->success()->send()),
 
             // 3. PAGAR PIX (Se não pagou ainda)
             Tables\Actions\Action::make('pay_pix')
@@ -269,6 +275,17 @@ public static function table(Table $table): Table
                 })
                 ->modalSubmitAction(false)
                 ->modalCancelAction(fn($action) => $action->label('Fechar')),
+
+                // 4. FINALIZAR ATENDIMENTO (Só aparece se confirmado)
+                Tables\Actions\Action::make('complete')
+                    ->label('Concluir')
+                    ->icon('heroicon-o-check')
+                    ->color('gray')
+                    ->iconButton()
+                    ->visible(fn(Appointment $record) => $record->status === 'confirmed')
+                    ->requiresConfirmation()
+                    ->action(fn(Appointment $record) => $record->update(['status' => 'completed'])),
+
 
             // MENU DE "MAIS OPÇÕES" (Para limpar a tela)
             Tables\Actions\ActionGroup::make([
