@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Filament\Resources\AppointmentResource\Pages;
 
 use App\Filament\Resources\AppointmentResource;
@@ -27,61 +28,73 @@ class ListAppointments extends ListRecords
         ];
     }
 
-public function getTabs(): array
+    public function getTabs(): array
     {
-        return [
-            'agenda' => Tab::make('Agenda Aberta')
-                ->icon('heroicon-o-calendar')
-                ->badge(
-                    $this->getModel()::whereIn('status', ['pending', 'confirmed'])->count()
-                )
-                ->badgeColor('warning')
-                ->modifyQueryUsing(fn (Builder $query) => $query->whereIn('status', ['pending', 'confirmed'])),
+        // Queries auxiliares para os contadores (Badge) ficarem rápidos
+        $query = $this->getModel()::query();
 
+        return [
+            // === DESTAQUE 1: O OPERACIONAL (O que tenho pra fazer?) ===
+            'agenda' => Tab::make('Agenda Aberta')
+                ->icon('heroicon-o-calendar-days')
+                ->badge($this->getModel()::whereIn('status', ['pending', 'confirmed'])->count())
+                ->badgeColor('info') // Azul para foco
+                ->modifyQueryUsing(fn (Builder $query) => $query
+                    ->whereIn('status', ['pending', 'confirmed'])
+                    ->orderBy('scheduled_at', 'asc') // Os mais próximos primeiro
+                ),
+
+            // === DESTAQUE 2: O FINANCEIRO/RESULTADO (O que já aconteceu?) ===
             'historico' => Tab::make('Histórico (Pagos/Faltas)')
                 ->icon('heroicon-o-archive-box')
-                // 👇 AQUI ESTÁ A MUDANÇA SOLICITADA
+                ->badgeColor('success') // Verde para sucesso
                 ->modifyQueryUsing(fn (Builder $query) => $query
                     ->where(function ($q) {
-                        $q->where('payment_status', 'approved') // 1. Pagamento Confirmado
-                          ->orWhere('status', 'no_show');       // 2. OU Faltou
+                        $q->where('payment_status', 'approved') // Dinheiro no bolso
+                          ->orWhere('status', 'no_show');       // Ou furo
                     })
-                    ->orderBy('scheduled_at', 'desc') // Ordena do mais recente para o antigo
+                    ->orderBy('scheduled_at', 'desc') // Do mais recente para trás
                 ),
+
+            // === FILTROS ESPECÍFICOS (Abaixo/Depois dos principais) ===
+            'pendentes' => Tab::make('Apenas Pendentes')
+                ->icon('heroicon-o-clock')
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'pending')),
+
+            'confirmados' => Tab::make('Apenas Confirmados')
+                ->icon('heroicon-o-check-circle')
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'confirmed')),
+
+            'faltas' => Tab::make('Apenas Faltas')
+                ->icon('heroicon-o-x-circle')
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'no_show')),
+
+            'todos' => Tab::make('Todos')
+                ->icon('heroicon-o-list-bullet'),
         ];
     }
 
-    // 🚀 O PULO DO GATO: Atualiza o filtro oficial da tabela
+    // 🚀 INTEGRAÇÃO COM CALENDÁRIO
     #[On('filtrar-data')]
     public function atualizarFiltroData(string $date): void
     {
-        // Se a data clicada for a mesma que já está no filtro, nós limpamos (Toggle)
+        // Lógica de Toggle: Se clicar na mesma data, limpa o filtro. Se for nova, aplica.
         if (($this->tableFilters['data_agendamento']['data_inicial'] ?? null) === $date) {
             $this->tableFilters['data_agendamento'] = [
                 'data_inicial' => null,
-                'data_final'   => null,
+                'data_final'   => null, // Remove filtro de data
             ];
         } else {
-            // Injeta a data no filtro 'data_agendamento' (inicial e final iguais para filtrar o dia exato)
+            // Aplica filtro: Data Inicial e Final iguais para pegar APENAS aquele dia
             $this->tableFilters['data_agendamento'] = [
                 'data_inicial' => $date,
-                'data_final'   => $date,
+                'data_final'   => null, // O filtro na Resource já trata o >= se o final for null, ou podemos forçar igualdade
             ];
+            // OBS: Verifique se no AppointmentResource o filtro 'data_agendamento' 
+            // está preparado para receber apenas data_inicial ou se precisa dos dois.
+            // Se precisar ser o dia exato, o ideal é atualizar o filtro na Resource para whereDate('scheduled_at', $date)
         }
 
-        // Reseta a página para a 1 para evitar erros de paginação
         $this->resetPage();
-    }
-
-    public function hydrate()
-    {
-        // Método Senior: Toda vez que o Livewire "acorda" (no polling), verificamos
-        // se tem algum modal aberto precisando de verificação.
-        // Como estamos numa lista, verificar todos seria pesado.
-        // Neste estágio, o polling apenas atualiza o banco.
-        // Para checar a API a cada 5s, o ideal é o Webhook.
-
-        // MAS, para teste imediato, vamos deixar o wire:poll apenas renderizar.
-        // O status só mudará se o Webhook bater ou se fizermos uma checagem manual.
     }
 }

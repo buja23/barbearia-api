@@ -1,9 +1,7 @@
 <?php
-
 namespace App\Filament\Widgets;
 
 use App\Models\Appointment;
-use Carbon\Carbon;
 use Filament\Widgets\Widget;
 use Illuminate\Support\Facades\Cache;
 
@@ -19,56 +17,55 @@ class CalendarWidget extends Widget
         return ! request()->routeIs('filament.admin.pages.dashboard');
     }
 
+// No CalendarWidget.php
     public function selectDate($date)
     {
-        $this->selectedDate = $date;
-        $this->dispatch('filtrar-data', date: $date);
+        // Isso recarrega a página filtrando a tabela de baixo
+        return redirect()->route('filament.admin.resources.appointments.index', [
+            'tableFilters[data_agendamento][data_inicial]' => $date,
+        ]);
     }
 
     public function getCalendarEvents(): array
     {
-        // Cacheia por 5 minutos para o calendário carregar instantaneamente
-        return Cache::remember('calendar_events_' . auth()->id(), 300, function () {
-            
-            // 1. Pega dados do mês atual +- 15 dias de margem
-            $start = now()->startOfMonth()->subDays(15);
-            $end   = now()->endOfMonth()->addDays(15);
+        return Cache::remember('calendar_heatmap_' . now()->format('Y-m-d-H'), 60, function () {
+            $start = now()->startOfMonth()->subWeek();
+            $end   = now()->endOfMonth()->addWeek();
 
+            // Agrupa por dia e conta
             $appointments = Appointment::query()
+                ->selectRaw('DATE(scheduled_at) as date, COUNT(*) as count')
                 ->whereBetween('scheduled_at', [$start, $end])
-                ->where('status', '!=', 'cancelled')
+                ->groupBy('date')
                 ->get();
 
-            // 2. Agrupa pelo dia (Y-m-d) usando PHP (Funciona no Postgres e MySQL)
-            $grouped = $appointments->groupBy(function ($appointment) {
-                return Carbon::parse($appointment->scheduled_at)->format('Y-m-d');
-            });
+            return $appointments->map(function ($day) {
+                // Regras de Lotação (Ajuste esses números conforme a realidade da barbearia)
+                $count = $day->count;
 
-            // Configuração de Lotação
-            $lotado = 15;
-            $medio  = 8;
-
-            // 3. Transforma no formato do FullCalendar
-            return $grouped->map(function ($dayAppointments, $dateString) use ($lotado, $medio) {
-                
-                $total = $dayAppointments->count();
-                
-                // Define a cor baseada na lotação
-                $class = 'bg-evento-azul'; // Padrão: Tranquilo
-
-                if ($total >= $lotado) {
-                    $class = 'bg-evento-vermelho'; // Lotado
-                } elseif ($total >= $medio) {
-                    $class = 'bg-evento-laranja'; // Médio
+                if ($count >= 15) {
+                    $color = '#ef4444'; // Vermelho (Lotado)
+                    $title = 'Lotado';
+                } elseif ($count >= 8) {
+                    $color = '#f97316'; // Laranja (Médio)
+                    $title = 'Médio';
+                } else {
+                    $color = '#3b82f6'; // Azul (Tranquilo)
+                    $title = 'Livre';
                 }
 
                 return [
-                    'start'      => $dateString,
-                    'display'    => 'background', // Cria a "Bola" de fundo
-                    'classNames' => [$class],     // Aplica a nossa classe CSS
-                    'allDay'     => true,
+                    'title'           => ' ', // Título vazio para não poluir
+                    'start'           => $day->date,
+                    'display'         => 'background', // Isso faz o evento ficar no fundo da célula
+                    'backgroundColor' => $color,
+                    'borderColor'     => 'transparent',
+                    'extendedProps'   => [
+                        'status' => $title,
+                        'count'  => $count,
+                    ],
                 ];
-            })->values()->toArray(); 
+            })->toArray();
         });
     }
 }
