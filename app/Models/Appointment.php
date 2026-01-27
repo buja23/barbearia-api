@@ -53,7 +53,7 @@ class Appointment extends Model
 {
     static::updating(function ($appointment) {
         // Quando o status mudar para 'completed', calculamos a comissão
-        if ($appointment->isDirty('status') && in_array($appointment->status, ['completed', 'no_show'])) {
+        if ($appointment->isDirty('status') && in_array($appointment->status, ['completed'])) {
                 $barber = $appointment->barber;
                 if ($barber && $barber->commission_percentage) {
                     $appointment->barber_commission_value = ($appointment->total_price * $barber->commission_percentage) / 100;
