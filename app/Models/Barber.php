@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Barber extends Model
 {
@@ -26,5 +27,11 @@ class Barber extends Model
     public function barbershop(): BelongsTo
     {
         return $this->belongsTo(Barbershop::class);
+    }
+
+    // ADICIONE ESTE MÉTODO:
+    public function appointments(): HasMany
+    {
+        return $this->hasMany(Appointment::class);
     }
 }

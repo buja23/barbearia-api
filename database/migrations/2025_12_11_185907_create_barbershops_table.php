@@ -17,7 +17,7 @@ return new class extends Migration
         $table->foreignId('user_id')->constrained()->cascadeOnDelete();
         $table->string('name');
         // O código do QR Code (ex: "barba-negra-123"). Tem que ser único.
-        $table->string('slug')->unique(); 
+        $table->string('slug')->unique();
         
         $table->string('phone')->nullable(); // Para o link do WhatsApp
         $table->string('address')->nullable();

@@ -1,43 +1,41 @@
 <?php
+
 namespace App\Filament\Widgets;
 
 use App\Models\Appointment;
 use Filament\Widgets\ChartWidget;
-use Illuminate\Support\Facades\DB;
+use Flowframe\Trend\Trend;
+use Flowframe\Trend\TrendValue;
 
 class RevenueChart extends ChartWidget
 {
-    protected static ?string $heading = 'Faturamento Mensal (R$)';
-    protected static ?int $sort       = 2; // Aparece abaixo dos stats
+    protected static ?string $heading = 'Faturamento Anual';
+    protected static ?int $sort = 2;
+    protected int | string | array $columnSpan = 'full'; // Ocupa a largura toda
 
     protected function getData(): array
     {
-        // Alteramos o filtro de 'confirmed' para 'completed'
-        $data = Appointment::select(
-            DB::raw('SUM(total_price) as total'),
-            DB::raw("to_char(scheduled_at, 'MM') as month")
-        )
-            ->where('status', 'completed') // Apenas o que foi concluído
-            ->whereYear('scheduled_at', now()->year)
-            ->groupBy('month')
-            ->orderBy('month')
-            ->pluck('total', 'month')
-            ->toArray();
-
-        $months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
-        $values = array_map(fn($m) => $data[$m] ?? 0, $months);
+        // Busca dados dos últimos 12 meses agrupados por mês
+        $data = Trend::model(Appointment::class)
+            ->between(
+                start: now()->subYear(),
+                end: now(),
+            )
+            ->perMonth()
+            ->sum('total_price');
 
         return [
             'datasets' => [
                 [
-                    'label'           => 'Faturamento Realizado',
-                    'data'            => array_values($values),
-                    'borderColor'     => '#10b981',
-                    'fill'            => 'start',
-                    'backgroundColor' => 'rgba(16, 185, 129, 0.1)',
+                    'label' => 'Receita (R$)',
+                    'data' => $data->map(fn (TrendValue $value) => $value->aggregate),
+                    'fill' => 'start', // Cria o efeito de área preenchida
+                    'backgroundColor' => 'rgba(59, 130, 246, 0.1)', // Azul transparente
+                    'borderColor' => '#3b82f6', // Azul sólido
+                    'tension' => 0.4, // Curva suave
                 ],
             ],
-            'labels'   => ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+            'labels' => $data->map(fn (TrendValue $value) => \Carbon\Carbon::parse($value->date)->format('M Y')),
         ];
     }
 

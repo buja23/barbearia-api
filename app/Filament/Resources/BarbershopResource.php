@@ -1,10 +1,8 @@
 <?php
-
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\BarbershopResource\Pages;
 use App\Models\Barbershop;
-use Filament\Forms;
 use Filament\Forms\Components\Actions\Action; // Importação essencial para o headerActions
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
@@ -24,6 +22,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class BarbershopResource extends Resource
 {
@@ -154,32 +153,40 @@ class BarbershopResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table
+       return $table
             ->columns([
-                ImageColumn::make('logo_path')
-                    ->label('Logo'),
-
-                TextColumn::make('name')
-                    ->label('Nome da Barbearia')
-                    ->searchable()
-                    ->sortable(),
-
+                ImageColumn::make('logo_path')->label('Logo')->circular(),
+                TextColumn::make('name')->label('Barbearia')->searchable()->sortable(),
                 TextColumn::make('slug')
-                    ->label('Link (Slug)')
-                    ->copyable(),
-
-                TextColumn::make('phone')
-                    ->label('Telefone'),
-
-                TextColumn::make('created_at')
-                    ->dateTime('d/m/Y H:i')
-                    ->label('Criado em')
-                    ->sortable(),
+                    ->label('Link')
+                    ->formatStateUsing(fn (string $state): string => url("/b/{$state}"))
+                    ->color('primary')
+                    ->copyable()
+                    ->copyMessage('Link copiado!'),
+                TextColumn::make('phone')->label('WhatsApp'),
             ])
-            ->filters([])
             ->actions([
+                // Action de TABELA (Usamos Tables\Actions\Action)
+                Tables\Actions\Action::make('qr_code')
+                    ->label('QR Code')
+                    ->icon('heroicon-o-qr-code')
+                    ->modalHeading('QR Code para Impressão')
+                    ->modalContent(function (Barbershop $record) {
+                        $url = route('barbershop.public', ['slug' => $record->slug]);
+                        
+                        // Garante que o QR Code seja gerado
+                        $qrCode = QrCode::size(250)->margin(2)->generate($url);
+
+                        return view('filament.pages.qr-code-modal', [
+                            'qrCode' => $qrCode,
+                            'url'    => $url,
+                            'name'   => $record->name
+                        ]);
+                    })
+                    ->modalSubmitAction(false)
+                    ->modalCancelAction(fn($action) => $action->label('Fechar')),
+
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -202,10 +209,7 @@ class BarbershopResource extends Resource
         ];
     }
 
-    public static function getEloquentQuery(): Builder
-    {
-        // Garante que o dono veja apenas a sua própria barbearia
-        return parent::getEloquentQuery()
-            ->where('user_id', auth()->id());
+   public static function getEloquentQuery(): Builder {
+        return parent::getEloquentQuery()->where('user_id', auth()->id());
     }
 }
