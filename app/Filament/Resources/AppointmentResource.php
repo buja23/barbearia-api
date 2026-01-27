@@ -221,7 +221,7 @@ public static function table(Table $table): Table
                 ])
                 ->query(function (Builder $query, array $data): Builder {
                     return $query
-                        ->when($data['data_inicial'], fn($query, $date) => $query->whereDate('scheduled_at', $date));
+                        ->when($data['data_inicial'] ?? null, fn($query, $date) => $query->whereDate('scheduled_at', $date));
                 }),
         ])
         ->actions([

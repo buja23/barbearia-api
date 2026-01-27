@@ -17,7 +17,23 @@ class ListAppointments extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make()->label('Novo Agendamento'),
+            // Botão de Limpar (Só aparece quando tem data selecionada)
+            Actions\Action::make('limpar_filtros')
+                ->label('Limpar Data')
+                ->icon('heroicon-m-x-mark') // Ícone de fechar
+                ->color('gray')
+                ->outlined() // Borda fina para não brigar com o botão principal
+                ->visible(fn () => ! empty($this->tableFilters['data_agendamento']['data_inicial'] ?? null))
+                ->action(function () {
+                    // 1. Limpa o filtro de data
+                    $this->tableFilters['data_agendamento'] = null;
+                    
+                    // 2. Avisa o Calendário para remover a bolinha preta
+                    $this->dispatch('limpar-calendario'); 
+                }),
+
+            Actions\CreateAction::make()
+                ->label('Novo Agendamento'),
         ];
     }
 
