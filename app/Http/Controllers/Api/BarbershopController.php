@@ -4,20 +4,33 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Barbershop;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class BarbershopController extends Controller
 {
-    public function show(string $slug): JsonResponse
+    // O App chama essa rota passando o SLUG (ex: /api/barbershop/barbearia-do-ze)
+    public function show($slug)
     {
-        // 1. Busca a barbearia pelo slug (ex: "barba-branca")
-        // 2. Já traz junto os serviços ativos (para não fazer duas consultas)
-        $barbershop = Barbershop::with(['services' => function($query) {
-            $query->where('is_active', true);
-        }])->where('slug', $slug)->firstOrFail();
+        $barbershop = Barbershop::where('slug', $slug)->first();
+
+        if (!$barbershop) {
+            return response()->json(['message' => 'Barbearia não encontrada'], 404);
+        }
 
         return response()->json([
-            'data' => $barbershop,
+            'id'       => $barbershop->id,
+            'name'     => $barbershop->name,
+            'slug'     => $barbershop->slug,
+            'logo'     => $barbershop->logo_path ? url('storage/' . $barbershop->logo_path) : null,
+            'phone'    => $barbershop->phone,
+            'address'  => $barbershop->address,
+            'whatsapp' => 'https://wa.me/55' . preg_replace('/[^0-9]/', '', $barbershop->phone), // Link pronto pro botão do Zap
+            
+            // Aqui você pode retornar as configurações visuais se tiver no futuro
+            'theme' => [
+                'primary_color' => '#000000', // Exemplo
+                'accent_color'  => '#D4AF37'  // Dourado
+            ]
         ]);
     }
 }

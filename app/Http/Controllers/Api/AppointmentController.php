@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 
 class AppointmentController extends Controller
 {
-    public function getAvailableSlots(Request $request, BookingService $service)
+    public function getAvailableSlots(Request $request, BookingService $service, $slug = null)
     {
 
     
@@ -164,4 +164,6 @@ class AppointmentController extends Controller
             'history'  => $history   // Lista de histórico completo
         ]);
     }
+
+    
 }
