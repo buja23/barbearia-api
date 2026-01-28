@@ -37,16 +37,19 @@ class AppointmentController extends Controller
             'client_phone' => 'required|string',
         ]);
 
-        // --- BLOCO DE SEGURANÇA NOVO ---
-        $barber  = Barber::find($data['barber_id']);
-        $service = Service::find($data['service_id']);
+        // --- 🛡️ BLINDAGEM DE INTEGRIDADE (NOVO) ---
+        $barber  = Barber::findOrFail($data['barber_id']);
+        $service = Service::findOrFail($data['service_id']);
 
-        // Verifica se o barbeiro e o serviço são da mesma barbearia
+        // Verifica se o serviço pertence à mesma barbearia do barbeiro
         if ($barber->barbershop_id !== $service->barbershop_id) {
             return response()->json([
-                'message' => 'Erro de integridade: O serviço e o barbeiro não pertencem à mesma barbearia.',
+                'message' => 'Erro de segurança: O serviço e o barbeiro não pertencem à mesma barbearia.',
             ], 422);
         }
+        // ------------------------------------------
+
+        $user = $request->user();
 
         // 1. Busca a assinatura e o plano para checar o limite
         $subscription = $user->activeSubscription;
@@ -144,7 +147,7 @@ class AppointmentController extends Controller
         });
     }
 
-public function index(Request $request)
+    public function index(Request $request)
     {
         $user = $request->user();
 
