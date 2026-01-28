@@ -3,15 +3,21 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Service;
+use App\Models\Barbershop;
+use Illuminate\Http\Request;
 
 class ServiceController extends Controller
 {
-    public function index()
+    public function index($slug)
     {
-        // Retorna apenas serviços ativos para o app do cliente
-        return response()->json(
-            Service::where('is_active', true)->get()
-        );
+        $barbershop = Barbershop::where('slug', $slug)->firstOrFail();
+
+        // Assumindo que você tem o relacionamento services() no model Barbershop
+        // Se não tiver, crie: return $this->hasMany(Service::class); no model Barbershop
+        $services = $barbershop->services()
+            ->where('is_active', true) 
+            ->get();
+
+        return response()->json($services); // Idealmente, crie um ServiceResource também
     }
 }

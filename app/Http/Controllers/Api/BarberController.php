@@ -1,17 +1,20 @@
 <?php
-
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Barber;
 
 class BarberController extends Controller
 {
-    public function index()
+// Adicione o parâmetro $slug
+    public function index($slug)
     {
-        // Retorna os barbeiros e a barbearia a que pertencem
-        return response()->json(
-            Barber::where('is_active', true)->with('barbershop')->get()
-        );
+        $barbershop = \App\Models\Barbershop::where('slug', $slug)->firstOrFail();
+
+        // Retorna APENAS os barbeiros desta barbearia específica
+        $barbers = $barbershop->barbers()
+            ->where('is_active', true)
+            ->get();
+
+        return \App\Http\Resources\BarberResource::collection($barbers);
     }
 }

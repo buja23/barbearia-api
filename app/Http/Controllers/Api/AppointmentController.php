@@ -16,7 +16,6 @@ class AppointmentController extends Controller
     public function getAvailableSlots(Request $request, BookingService $service, $slug = null)
     {
 
-    
         $request->validate([
             'barber_id'  => 'required|exists:barbers,id',
             'date'       => 'required|date_format:Y-m-d',
@@ -38,8 +37,16 @@ class AppointmentController extends Controller
             'client_phone' => 'required|string',
         ]);
 
-        $user    = $request->user();
-        $service = Service::findOrFail($data['service_id']);
+        // --- BLOCO DE SEGURANÇA NOVO ---
+        $barber  = Barber::find($data['barber_id']);
+        $service = Service::find($data['service_id']);
+
+        // Verifica se o barbeiro e o serviço são da mesma barbearia
+        if ($barber->barbershop_id !== $service->barbershop_id) {
+            return response()->json([
+                'message' => 'Erro de integridade: O serviço e o barbeiro não pertencem à mesma barbearia.',
+            ], 422);
+        }
 
         // 1. Busca a assinatura e o plano para checar o limite
         $subscription = $user->activeSubscription;
@@ -137,22 +144,20 @@ class AppointmentController extends Controller
         });
     }
 
-    public function index(Request $request)
+public function index(Request $request)
     {
         $user = $request->user();
 
-        // Buscamos todos os agendamentos do cliente ordenados do mais recente para o mais antigo
-        $appointments = Appointment::with([
-                'barber:id,name,avatar', // Trazemos só o necessário do barbeiro
-                'service:id,name,price'  // Trazemos o nome do serviço
-            ])
+        // Buscamos todos os agendamentos do cliente ordenados
+        // Carregamos 'barber.barbershop' porque o Resource usa o nome da barbearia
+        $appointments = Appointment::with(['barber.barbershop', 'service'])
             ->where('user_id', $user->id)
             ->orderBy('scheduled_at', 'desc')
             ->get();
 
         // Separamos o joio do trigo (Futuros vs Passados)
         $upcoming = $appointments->filter(function ($app) {
-            return $app->scheduled_at >= now() && !in_array($app->status, ['cancelled', 'no_show', 'completed']);
+            return $app->scheduled_at >= now() && ! in_array($app->status, ['cancelled', 'no_show', 'completed']);
         })->values();
 
         $history = $appointments->filter(function ($app) {
@@ -160,10 +165,9 @@ class AppointmentController extends Controller
         })->values();
 
         return response()->json([
-            'upcoming' => $upcoming, // Lista de agendamentos futuros
-            'history'  => $history   // Lista de histórico completo
+            'upcoming' => \App\Http\Resources\AppointmentResource::collection($upcoming),
+            'history'  => \App\Http\Resources\AppointmentResource::collection($history),
         ]);
     }
 
-    
 }
