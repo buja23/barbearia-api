@@ -1,20 +1,26 @@
 <?php
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use App\Models\Barber;
+use App\Models\Barbershop; // <--- Importante importar isso!
 
 class BarberController extends Controller
 {
-// Adicione o parâmetro $slug
     public function index($slug)
     {
-        $barbershop = \App\Models\Barbershop::where('slug', $slug)->firstOrFail();
+        // 1. Primeiro achamos a barbearia pelo slug
+        $shop = Barbershop::where('slug', $slug)->first();
 
-        // Retorna APENAS os barbeiros desta barbearia específica
-        $barbers = $barbershop->barbers()
-            ->where('is_active', true)
-            ->get();
+        if (!$shop) {
+            return response()->json(['message' => 'Barbearia não encontrada'], 404);
+        }
 
-        return \App\Http\Resources\BarberResource::collection($barbers);
+        // 2. Agora pegamos os barbeiros DESSA barbearia
+        $barbers = Barber::where('barbershop_id', $shop->id)->get();
+
+        return response()->json($barbers);
     }
 }
