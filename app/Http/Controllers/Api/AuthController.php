@@ -64,4 +64,25 @@ class AuthController extends Controller
 
         return response()->json(['message' => 'Logout realizado com sucesso']);
     }
+
+    public function update(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            // Garante que o email é único, mas ignora o ID do próprio usuário atual
+            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+        ]);
+
+        $user->update([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+        ]);
+
+        return response()->json([
+            'message' => 'Perfil atualizado com sucesso!',
+            'user' => $user
+        ]);
+    }
 }
