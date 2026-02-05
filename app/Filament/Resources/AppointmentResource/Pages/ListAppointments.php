@@ -73,16 +73,18 @@ class ListAppointments extends ListRecords
                 ),
 
             // === FILTROS ESPECÍFICOS (Abaixo/Depois dos principais) ===
-            'pendentes' => Tab::make('Apenas Pendentes')
-                ->icon('heroicon-o-clock')
-                ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'pending')),
-
             'confirmados' => Tab::make('Apenas Confirmados')
                 ->icon('heroicon-o-check-circle')
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'confirmed')),
 
-            'faltas' => Tab::make('Apenas Faltas')
-                ->icon('heroicon-o-x-circle')
+           'cancelados' => Tab::make('Cancelados') // <--- NOVA ABA PARA O QUE VOCÊ PROCURA
+                ->icon('heroicon-o-x-mark')
+                ->badgeColor('danger')
+                ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'cancelled')),
+
+            'faltas' => Tab::make('Não Compareceu (No-Show)')
+                ->icon('heroicon-o-eye-slash') // Ícone mais adequado para "não visto"
+                ->badgeColor('warning')
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('status', 'no_show')),
 
             'todos' => Tab::make('Todos')
