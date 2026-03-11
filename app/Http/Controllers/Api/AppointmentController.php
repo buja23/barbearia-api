@@ -81,15 +81,28 @@ class AppointmentController extends Controller
     }
 
     /**
-     * Cria agendamento.
+     * Cria agendamento com validações robustas.
      */
     public function store(Request $request)
     {
+        // ✅ Validações Fortes
         $data = $request->validate([
-            'barber_id'    => 'required|exists:barbers,id',
-            'service_id'   => 'required|exists:services,id',
-            'scheduled_at' => 'required|date_format:Y-m-d H:i:s', 
-            'client_phone' => 'nullable|string',
+            'barber_id'    => 'required|integer|exists:barbers,id',
+            'service_id'   => 'required|integer|exists:services,id',
+            'scheduled_at' => [
+                'required',
+                'date_format:Y-m-d H:i:s',
+                'after:now', // Não pode agendar no passado
+                'before:+1 year', // Máximo 1 ano no futuro
+            ],
+            'client_phone' => [
+                'nullable',
+                'regex:/^\+?[\d\s\-\(\)]{10,20}$/', // Valida formato de telefone
+            ],
+        ], [
+            'scheduled_at.after' => 'A data/hora deve ser no futuro.',
+            'scheduled_at.before' => 'Não é permitido agendar com mais de 1 ano de antecedência.',
+            'client_phone.regex' => 'Formato de telefone inválido.',
         ]);
 
         $user = $request->user();
@@ -154,20 +167,42 @@ class AppointmentController extends Controller
 
     public function destroy(Request $request, $id)
     {
-        $appointment = Appointment::where('user_id', $request->user()->id)
-            ->where('id', $id)
-            ->first();
+        $user = $request->user();
+        
+        $appointment = Appointment::find($id);
 
+        // ✅ AUTORIZAÇÃO: Verificar se o agendamento pertence ao usuário
         if (!$appointment) {
+            \Log::warning('Tentativa de deletar agendamento inexistente', [
+                'appointment_id' => $id,
+                'user_id' => $user->id,
+            ]);
             return response()->json(['message' => 'Agendamento não encontrado.'], 404);
+        }
+
+        if ($appointment->user_id !== $user->id) {
+            \Log::warning('Tentativa não autorizada de deletar agendamento', [
+                'appointment_id' => $id,
+                'appointment_user_id' => $appointment->user_id,
+                'user_id' => $user->id,
+            ]);
+            return response()->json(['message' => 'Não autorizado.'], 403);
         }
 
         if ($appointment->status === 'cancelled') {
             return response()->json(['message' => 'Já está cancelado.'], 422);
         }
 
+        // ✅ AUDIT LOG: Registrar cancelamento
+        \Log::channel('audit')->info('Agendamento cancelado', [
+            'appointment_id' => $appointment->id,
+            'user_id' => $user->id,
+            'original_price' => $appointment->total_price,
+            'timestamp' => now(),
+        ]);
+
         if ($appointment->total_price == 0 && $appointment->notes && str_contains($appointment->notes, 'plano')) {
-            $subscription = $request->user()->activeSubscription;
+            $subscription = $user->activeSubscription;
             if ($subscription && $subscription->uses_this_month > 0) {
                 $subscription->decrement('uses_this_month');
             }

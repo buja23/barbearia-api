@@ -31,25 +31,25 @@ class PaymentService
                 return ['success' => false, 'error' => 'Valor do agendamento inválido (R$ 0,00).'];
             }
 
-            // --- AQUI ESTAVA O ERRO ---
-            // O Mercado Pago exige CPF para testes de Pix
-            // E o email não pode ser repetido/igual ao do vendedor
+            // Obter dados do cliente da nomeação ou usuário
+            $user = $appointment->user;
+            $cpf = $user->cpf ?? env('MERCADOS_PAGO_TEST_CPF', '19119119100');
             
             $request = [
                 "transaction_amount" => (float) $appointment->total_price,
                 "description" => "Corte #" . $appointment->id,
                 "payment_method_id" => "pix",
                 "payer" => [
-                    // TRUQUE 1: Email único a cada tentativa para não travar no Sandbox
-                    "email" => "teste_user_" . uniqid() . "@test.com",
+                    // Email único a cada tentativa para não travar no Sandbox
+                    "email" => $user->email ?? ("cliente_" . uniqid() . "@test.com"),
                     
-                    "first_name" => "Cliente",
+                    "first_name" => $user->name ?? "Cliente",
                     "last_name" => "Teste",
                     
-                    // TRUQUE 2: CPF Válido de Teste (OBRIGATÓRIO)
+                    // CPF (ideal: do usuário; teste: da variável de ambiente)
                     "identification" => [
                         "type" => "CPF",
-                        "number" => "19119119100" 
+                        "number" => preg_replace('/\D/', '', $cpf) // Remove formatação
                     ]
                 ]
             ];
@@ -76,6 +76,15 @@ class PaymentService
                 'payment_method' => 'pix',
                 'pix_copy_paste' => $pixData->qr_code,
                 'pix_qr_code_url' => $pixData->qr_code_base64,
+            ]);
+
+            // ✅ AUDIT LOG: Registrar criação de pagamento
+            Log::channel('audit')->info('Pagamento PIX criado', [
+                'payment_id' => (string) $payment->id,
+                'appointment_id' => $appointment->id,
+                'user_id' => $appointment->user_id,
+                'amount' => $appointment->total_price,
+                'timestamp' => now(),
             ]);
 
             return [

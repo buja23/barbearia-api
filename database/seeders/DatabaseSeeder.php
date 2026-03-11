@@ -16,10 +16,11 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // 1. SEU LOGIN DE ADMINISTRADOR (DONO)
+        // Pegue as credenciais do .env para NÃO expor dados reais no código
         $dono = User::create([
-            'name'              => 'Victor Azambuja',
-            'email'             => 'victor.azam10@gmail.com',
-            'password'          => Hash::make('poderoso200'),
+            'name'              => env('ADMIN_NAME', 'Administrador'),
+            'email'             => env('ADMIN_EMAIL', 'admin@barbearia.local'),
+            'password'          => Hash::make(env('ADMIN_PASSWORD', 'ChangeMe@12345')),
             'role'              => 'admin',
             'email_verified_at' => now(),
         ]);

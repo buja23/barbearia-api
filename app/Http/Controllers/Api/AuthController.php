@@ -14,14 +14,25 @@ class AuthController extends Controller
         $data = $request->validate([
             'name'     => 'required|string|max:255',
             'email'    => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
+            // Senha: Mínimo 10 caracteres com letras, números e símbolos
+            'password' => [
+                'required',
+                'string',
+                'min:10',
+                'confirmed',
+                // Valida: letras maiúsculas, minúsculas, números e símbolos
+                'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/',
+            ],
+        ], [
+            'password.regex' => 'A senha deve conter letras maiúsculas, minúsculas e números.',
+            'password.min' => 'A senha deve ter no mínimo 10 caracteres.',
         ]);
 
         $user = User::create([
             'name'     => $data['name'],
             'email'    => $data['email'],
             'password' => Hash::make($data['password']),
-            'role'     => 'client', // SOLUÇÃO PROFISSIONAL: Força sempre como cliente
+            'role'     => 'client', // Força sempre como cliente
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -42,7 +53,8 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        if (! $user || ! Hash::make($request->password, ['fallback' => true]) && ! Hash::check($request->password, $user->password)) {
+        // Verificar se o usuário existe E a senha está correta
+        if (!$user || !Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
                 'email' => ['As credenciais fornecidas estão incorretas.'],
             ]);
@@ -71,13 +83,21 @@ class AuthController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            // Garante que o email é único, mas ignora o ID do próprio usuário atual
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
         ]);
+
+        // Se o email foi alterado, requerer verificação novamente
+        if ($user->email !== $validated['email']) {
+            $validated['email_verified_at'] = null; // Reseta a verificação
+            
+            // OPCIONAL: Enviar email de verificação
+            // $user->sendEmailVerificationNotification();
+        }
 
         $user->update([
             'name' => $validated['name'],
             'email' => $validated['email'],
+            'email_verified_at' => $validated['email_verified_at'] ?? $user->email_verified_at,
         ]);
 
         return response()->json([

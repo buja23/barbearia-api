@@ -127,6 +127,30 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
+        // ✅ CANAL DE AUDIT - Para registrar ações críticas (pagamentos, cancelamentos, etc)
+        'audit' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/audit.log'),
+            'level' => env('LOG_LEVEL', 'info'),
+            'days' => 90, // Guardar 90 dias de logs de auditoria
+            'replace_placeholders' => true,
+        ],
+
+    ],
+
+    // ✅ FILTRO DE DADOS SENSÍVEIS - Remover do log
+    'except' => [
+        'password',
+        'password_confirmation',
+        'cpf',
+        'phone',
+        'api_key',
+        'access_token',
+        'secret',
+        'token',
+        'authorization',
+        'credit_card',
+        'card_number',
     ],
 
 ];

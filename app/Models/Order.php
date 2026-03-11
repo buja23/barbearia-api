@@ -12,6 +12,10 @@ class Order extends Model
         'pix_copy_paste', 'qr_code_base64'
     ];
 
+    protected $casts = [
+        'total_amount' => 'decimal:2',
+    ];
+
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);

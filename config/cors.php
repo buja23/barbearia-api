@@ -17,18 +17,18 @@ return [
 
     'paths' => ['api/*', 'sanctum/csrf-cookie', 'login', 'register', 'logout'],
 
-    'allowed_methods' => ['*'], // Libera GET, POST, PUT, DELETE, OPTIONS
+    'allowed_methods' => ['*'], // GET, POST, PUT, DELETE, OPTIONS
 
-    'allowed_origins' => ['*'], // ⚠️ Libera qualquer IP/Site (Ideal para Dev)
+    'allowed_origins' => explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost')),
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['*'], // ⚠️ CRUCIAL: Libera o envio do 'Authorization'
+    'allowed_headers' => ['Content-Type', 'Authorization'],
 
-    'exposed_headers' => [],
+    'exposed_headers' => ['X-Total-Count'],
 
-    'max_age' => 0,
+    'max_age' => 3600,
 
-    'supports_credentials' => true, // Se der erro, mude para true (mas false costuma ser melhor pra mobile com token Bearer)
+    'supports_credentials' => true,
 
 ];

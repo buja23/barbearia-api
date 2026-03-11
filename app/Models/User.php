@@ -30,7 +30,9 @@ class User extends Authenticatable implements FilamentUser
         'name',
         'email',
         'password',
-        'role', // 3. ADICIONE 'role' AQUI PARA CONSEGUIR SALVAR NO BANCO
+        'cpf',      // CPF será gravado encriptado
+        'phone',    // Telefone será gravado encriptado
+        'role',
     ];
 
     protected $hidden = [
@@ -43,6 +45,9 @@ class User extends Authenticatable implements FilamentUser
         return [
             'email_verified_at' => 'datetime',
             'password'          => 'hashed',
+            // ✅ ENCRIPTAÇÃO: Dados sensíveis são encriptados ao salvar e descriptados ao ler
+            'cpf'               => 'encrypted',
+            'phone'             => 'encrypted',
         ];
     }
 

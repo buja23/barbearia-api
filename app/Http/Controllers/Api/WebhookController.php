@@ -21,6 +21,12 @@ class WebhookController extends Controller
 
     public function handle(Request $request)
     {
+        // ✅ VALIDAÇÃO OBRIGATÓRIA: Confirmar que é um webhook legítimo do MP
+        if (!$this->validateMercadoPagoSignature($request)) {
+            Log::warning('Webhook inválido (assinatura falha):', $request->all());
+            return response()->json(['error' => 'Invalid Signature'], 403);
+        }
+
         Log::info('Webhook Recebido:', $request->all());
 
         try {
@@ -28,7 +34,6 @@ class WebhookController extends Controller
             $type   = $request->input('type'); // payment ou subscription_preapproval
 
             // --- CENÁRIO A: Renovação de Assinatura (Cartão) ---
-            // O MP geralmente manda type 'subscription_preapproval' ou topic 'subscription'
             if ($type === 'subscription_preapproval' || $request->input('topic') === 'subscription') {
                 return $this->handleSubscriptionRenewal($request);
             }
@@ -44,6 +49,30 @@ class WebhookController extends Controller
             Log::error('Erro Geral Webhook: ' . $e->getMessage());
             return response()->json(['error' => 'Internal Error'], 500);
         }
+    }
+
+    /**
+     * Valida a assinatura do webhook do Mercado Pago
+     * Referência: https://www.mercadopago.com/developers/es/reference/webhooks/_api_v1_suscriptions_search/get_webhook_app_header_x_signature
+     */
+    protected function validateMercadoPagoSignature(Request $request): bool
+    {
+        $signature = $request->header('x-signature');
+        $timestamp = $request->header('x-request-id');
+        $secret = env('MERCADO_PAGO_WEBHOOK_SECRET');
+
+        // Se não tiver segredo configurado, retorna falso (segurança padrão)
+        if (!$secret || !$signature || !$timestamp) {
+            return false; // Log::warning('Missing webhook headers');
+        }
+
+        // Mercado Pago usa HMAC SHA256
+        $body = $request->getContent();
+        $data = "{$timestamp}.{$body}";
+        $expectedHash = hash_hmac('sha256', $data, $secret);
+        $receivedHash = explode(',', $signature)[0] ?? '';
+
+        return hash_equals($expectedHash, $receivedHash);
     }
 
     /**

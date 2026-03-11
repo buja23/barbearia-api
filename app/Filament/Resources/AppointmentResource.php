@@ -56,7 +56,8 @@ class AppointmentResource extends Resource
                             ->native(false)
                             ->displayFormat('d/m/Y')
                             ->closeOnDateSelection()
-                            ->dehydrated(false), // Não salva no banco, serve só pra lógica
+                            ->dehydrated(false) // Não salva no banco, serve só pra lógica
+                            ->locale('pt_BR'),
 
                         Select::make('appointment_time')
                             ->label('Horários Livres')

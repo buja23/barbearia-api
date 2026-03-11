@@ -1,0 +1,28 @@
+<?php
+
+return [
+    'hello' => 'Olá',
+    'welcome' => 'Bem-vindo',
+    'success' => 'Sucesso',
+    'error' => 'Erro',
+    'warning' => 'Aviso',
+    'info' => 'Informação',
+    'save' => 'Salvar',
+    'delete' => 'Deletar',
+    'edit' => 'Editar',
+    'create' => 'Criar',
+    'cancel' => 'Cancelar',
+    'confirm' => 'Confirmar',
+    'close' => 'Fechar',
+    'back' => 'Voltar',
+    'next' => 'Próximo',
+    'previous' => 'Anterior',
+    'loading' => 'Carregando...',
+    'no_data' => 'Sem dados',
+    'are_you_sure' => 'Você tem certeza?',
+    'confirm_delete' => 'Tem certeza que deseja deletar este item?',
+    'deleted_successfully' => 'Deletado com sucesso',
+    'created_successfully' => 'Criado com sucesso',
+    'updated_successfully' => 'Atualizado com sucesso',
+    'saved_successfully' => 'Salvo com sucesso',
+];
