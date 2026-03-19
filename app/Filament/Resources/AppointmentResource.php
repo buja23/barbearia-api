@@ -36,6 +36,9 @@ class AppointmentResource extends Resource
     protected static ?string $modelLabel       = 'Agendamento';
     protected static ?string $pluralModelLabel = 'Agendamentos';
 
+    // Filament usa este relacionamento para o scoping automático por tenant
+    protected static ?string $tenantOwnershipRelationshipName = 'barbershop';
+
     public static function form(Form $form): Form
     {
         return $form
@@ -312,6 +315,16 @@ public static function table(Table $table): Table
             Tables\Actions\DeleteBulkAction::make(),
         ]);
 }
+
+    /**
+     * Informa ao Filament qual relacionamento usar para o scoping por tenant.
+     * O Filament vai automaticamente filtrar appointments pelo barbershop_id
+     * do tenant ativo na URL. Admin não tem tenant forçado, vê tudo.
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['barber', 'service', 'user']);
+    }
 
     public static function getPages(): array
     {

@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany; // <--- ADICIONE ISSO
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Barbershop extends Model
 {
@@ -18,7 +18,18 @@ class Barbershop extends Model
         'phone',
         'address',
         'logo_path',
+        'subscription_status',
+        'trial_ends_at',
+        'subscription_expires_at',
+        'subscription_plan',
     ];
+
+    protected $casts = [
+        'trial_ends_at'            => 'datetime',
+        'subscription_expires_at'  => 'datetime',
+    ];
+
+    // --- Relacionamentos ---
 
     public function user(): BelongsTo
     {
@@ -30,9 +41,67 @@ class Barbershop extends Model
         return $this->hasMany(Service::class);
     }
 
-    public function openingHours(): HasMany
-{
-    return $this->hasMany(OpeningHour::class);
-}
+    public function barbers(): HasMany
+    {
+        return $this->hasMany(Barber::class);
+    }
 
+    public function appointments(): HasMany
+    {
+        return $this->hasMany(Appointment::class);
+    }
+
+    public function openingHours(): HasMany
+    {
+        return $this->hasMany(OpeningHour::class);
+    }
+
+    // --- Lógica de Assinatura SaaS ---
+
+    /**
+     * Verifica se a barbearia tem acesso ativo (trial ou assinatura paga).
+     */
+    public function hasActiveAccess(): bool
+    {
+        return $this->isOnTrial() || $this->isSubscriptionActive();
+    }
+
+    /**
+     * Verifica se ainda está no período de trial.
+     */
+    public function isOnTrial(): bool
+    {
+        return $this->subscription_status === 'trial'
+            && $this->trial_ends_at !== null
+            && $this->trial_ends_at->isFuture();
+    }
+
+    /**
+     * Verifica se a assinatura paga está ativa e não expirou.
+     */
+    public function isSubscriptionActive(): bool
+    {
+        return $this->subscription_status === 'active'
+            && $this->subscription_expires_at !== null
+            && $this->subscription_expires_at->isFuture();
+    }
+
+    /**
+     * Verifica se o acesso está bloqueado (trial/assinatura expirados).
+     */
+    public function isAccessBlocked(): bool
+    {
+        return !$this->hasActiveAccess();
+    }
+
+    /**
+     * Dias restantes de trial (retorna 0 se expirado).
+     */
+    public function trialDaysRemaining(): int
+    {
+        if (!$this->isOnTrial()) {
+            return 0;
+        }
+        return (int) now()->diffInDays($this->trial_ends_at, false);
+    }
 }

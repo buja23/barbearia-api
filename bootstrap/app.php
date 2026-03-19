@@ -13,7 +13,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        //
+        // Registra o alias do middleware de assinatura SaaS
+        $middleware->alias([
+            'subscription.active' => \App\Http\Middleware\EnsureBusinessSubscriptionActive::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // CONFIGURAÇÃO NOVA: Forçar JSON em erros da API

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Appointment extends Model
 {
     protected $fillable = [
+        'barbershop_id',
         'barber_id',
         'service_id',
         'user_id',
@@ -33,6 +34,11 @@ class Appointment extends Model
     ];
 
     // --- Relacionamentos ---
+
+    public function barbershop(): BelongsTo
+    {
+        return $this->belongsTo(Barbershop::class);
+    }
 
     public function barber(): BelongsTo
     {

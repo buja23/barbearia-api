@@ -3,6 +3,11 @@
 use Illuminate\Support\Facades\Route;
 use App\Models\Barbershop;
 
+// Redirecionar raiz para painel admin
+Route::get('/', function () {
+    return redirect('/admin');
+});
+
 // Rota pública para clientes
 Route::get('/b/{slug}', function ($slug) {
     $barbershop = Barbershop::where('slug', $slug)->firstOrFail();

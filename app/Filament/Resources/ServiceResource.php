@@ -22,8 +22,10 @@ use Filament\Tables\Columns\ToggleColumn;
 
 class ServiceResource extends Resource {
     protected static ?string $model = Service::class;
-
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+
+    // Filament usa este relacionamento para o scoping automático por tenant
+    protected static ?string $tenantOwnershipRelationshipName = 'barbershop';
 
     public static function form( Form $form ): Form {
         return $form
@@ -86,6 +88,7 @@ class ServiceResource extends Resource {
             ] ),
         ] );
     }
+
 
     public static function getRelations(): array {
         return [

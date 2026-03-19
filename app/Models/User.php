@@ -2,37 +2,28 @@
 namespace App\Models;
 
 use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasTenants;
 use Filament\Panel;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-// 1. IMPORTAÇÃO OBRIGATÓRIA PARA API
 
-class User extends Authenticatable implements FilamentUser
+class User extends Authenticatable implements FilamentUser, HasTenants
 {
-    // 2. ADICIONE O TRAIT HasApiTokens AQUI PARA REMOVER O ERRO 500
     use HasApiTokens, HasFactory, Notifiable;
 
-    /**
-     * Permissões de acesso ao Painel Admin (Filament)
-     */
-    public function canAccessPanel(Panel $panel): bool
-    {
-        // Só permite acesso se o usuário tiver a role 'admin' ou 'barber'
-        return in_array($this->role, ['admin', 'barber']);
-    }
-
-    /**
-     * Campos que podem ser preenchidos em massa
-     */
     protected $fillable = [
         'name',
         'email',
         'password',
-        'cpf',      // CPF será gravado encriptado
-        'phone',    // Telefone será gravado encriptado
+        'cpf',
+        'phone',
         'role',
+        'barbershop_id',
     ];
 
     protected $hidden = [
@@ -45,22 +36,94 @@ class User extends Authenticatable implements FilamentUser
         return [
             'email_verified_at' => 'datetime',
             'password'          => 'hashed',
-            // ✅ ENCRIPTAÇÃO: Dados sensíveis são encriptados ao salvar e descriptados ao ler
             'cpf'               => 'encrypted',
             'phone'             => 'encrypted',
         ];
     }
 
-    public function barbershops()
+    // -------------------------------------------------------------------------
+    // Filament: Controle de acesso ao painel
+    // -------------------------------------------------------------------------
+
+    /** Apenas admin e barber entram no painel Filament. */
+    public function canAccessPanel(Panel $panel): bool
     {
-        return $this->hasMany(Barbershop::class);
+        return in_array($this->role, ['admin', 'barber']);
     }
 
-    // Dentro da classe User
+    // -------------------------------------------------------------------------
+    // Filament: Multi-Tenancy (HasTenants)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Retorna a lista de tenants (barbearias) que o usuário pode acessar.
+     * - admin → todas as barbearias do sistema
+     * - barber → somente as barbearias que ele é dono
+     */
+    public function getTenants(Panel $panel): Collection
+    {
+        if ($this->isAdmin()) {
+            return Barbershop::all();
+        }
+
+        return $this->ownedBarbershops;
+    }
+
+    /**
+     * Verifica se o usuário pode acessar um tenant específico.
+     * - admin → pode acessar qualquer tenant
+     * - barber → apenas os seus próprios
+     */
+    public function canAccessTenant(Model $tenant): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        return $this->ownedBarbershops()->where('id', $tenant->id)->exists();
+    }
+
+    // -------------------------------------------------------------------------
+    // Relacionamentos
+    // -------------------------------------------------------------------------
+
+    /** Barbearias que este usuário é DONO (creator). */
+    public function ownedBarbershops(): HasMany
+    {
+        return $this->hasMany(Barbershop::class, 'user_id');
+    }
+
+    /** Agendamentos vinculados ao usuário como cliente. */
+    public function appointments(): HasMany
+    {
+        return $this->hasMany(Appointment::class, 'user_id');
+    }
+
+    /** Assinatura ativa do usuário-cliente (planos de corte). */
     public function activeSubscription()
     {
         return $this->hasOne(Subscription::class)
             ->where('status', 'active')
             ->where('expires_at', '>=', now());
     }
+
+    // -------------------------------------------------------------------------
+    // Helpers de Role
+    // -------------------------------------------------------------------------
+
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    public function isBarber(): bool
+    {
+        return $this->role === 'barber';
+    }
+
+    public function isClient(): bool
+    {
+        return $this->role === 'client';
+    }
 }
+

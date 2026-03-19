@@ -209,7 +209,13 @@ class BarbershopResource extends Resource
         ];
     }
 
-   public static function getEloquentQuery(): Builder {
-        return parent::getEloquentQuery()->where('user_id', auth()->id());
+    /**
+     * O BarbershopResource gerencia o próprio tenant, então o Filament
+     * já limita automaticamente ao tenant ativo. Não precisamos de scoping manual.
+     * Admin vê todos os tenants pois getTenants() retorna Barbershop::all().
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery();
     }
 }
