@@ -15,6 +15,9 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        // 0. SEED DOS PLANOS SAAS DA PLATAFORMA
+        $this->call(SaasPlanSeeder::class);
+
         // 1. SEU LOGIN DE ADMINISTRADOR (DONO)
         // Pegue as credenciais do .env para NÃO expor dados reais no código
         $dono = User::create([

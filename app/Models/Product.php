@@ -4,12 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Product extends Model
 {
     use HasFactory;
 
     protected $fillable = [
+        'barbershop_id',
         'name',
         'description',
         'cost_price',
@@ -23,6 +25,11 @@ class Product extends Model
         'cost_price' => 'decimal:2',
         'sale_price' => 'decimal:2',
     ];
+
+    public function barbershop(): BelongsTo
+    {
+        return $this->belongsTo(Barbershop::class);
+    }
 
     // Helper para saber se está com estoque baixo
     public function isLowStock(): bool

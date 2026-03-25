@@ -28,14 +28,16 @@ class CalendarWidget extends Widget
 
     public function getCalendarEvents(): array
     {
-        return Cache::remember('calendar_heatmap_' . now()->format('Y-m-d-H'), 60, function () {
+        $tenantId = filament()->getTenant()?->id ?? 'all';
+
+        return Cache::remember('calendar_heatmap_' . $tenantId . '_' . now()->format('Y-m-d-H'), 300, function () use ($tenantId) {
             $start = now()->startOfMonth()->subWeek();
             $end   = now()->endOfMonth()->addWeek();
 
-            // Agrupa por dia e conta
             $appointments = Appointment::query()
                 ->selectRaw('DATE(scheduled_at) as date, COUNT(*) as count')
                 ->whereBetween('scheduled_at', [$start, $end])
+                ->when($tenantId !== 'all', fn ($q) => $q->where('barbershop_id', $tenantId))
                 ->groupBy('date')
                 ->get();
 

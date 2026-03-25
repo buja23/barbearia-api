@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'mercadopago' => [
+        'token'          => env('MERCADOPAGO_ACCESS_TOKEN'),
+        'public_key'     => env('MERCADOPAGO_PUBLIC_KEY'),
+        'webhook_secret' => env('MERCADO_PAGO_WEBHOOK_SECRET'),
+    ],
+
 ];

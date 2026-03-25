@@ -45,10 +45,21 @@ class User extends Authenticatable implements FilamentUser, HasTenants
     // Filament: Controle de acesso ao painel
     // -------------------------------------------------------------------------
 
-    /** Apenas admin e barber entram no painel Filament. */
+    /** Apenas admin e barber entram no painel Filament.
+     *  Novos usuários (role=client sem barbearia) também entram para completar o cadastro.
+     */
     public function canAccessPanel(Panel $panel): bool
     {
-        return in_array($this->role, ['admin', 'barber']);
+        if (in_array($this->role, ['admin', 'barber'])) {
+            return true;
+        }
+
+        // Permite acesso para usuários recém-cadastrados completarem o registro da barbearia
+        if ($this->role === 'client' && $this->ownedBarbershops()->doesntExist()) {
+            return true;
+        }
+
+        return false;
     }
 
     // -------------------------------------------------------------------------

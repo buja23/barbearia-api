@@ -6,6 +6,7 @@ use App\Models\Barber;
 use App\Models\Appointment;
 use App\Models\OpeningHour;
 use App\Models\Service;
+use App\Models\User;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 
@@ -89,22 +90,22 @@ class BookingService
         return ($slotStart < $busyEndStr && $slotEnd > $busyStartStr);
     }
 
-    public function checkSubscriptionLimit(User $user)
-{
-    $subscription = $user->subscription;
+    public function checkSubscriptionLimit(User $user): bool
+    {
+        $subscription = $user->activeSubscription;
 
-    // Se não tiver assinatura ou estiver expirada, ele agenda como avulso (normal)
-    if (!$subscription || $subscription->status !== 'active') {
+        // Se não tiver assinatura ativa, agenda como avulso (normal)
+        if (!$subscription) {
+            return true;
+        }
+
+        $plan = $subscription->plan;
+
+        // Se já usou tudo o que podia no mês
+        if ($subscription->uses_this_month >= $plan->cuts_per_month) {
+            throw new \Exception('Limite mensal de agendamentos atingido para o seu plano.');
+        }
+
         return true;
     }
-
-    $plan = $subscription->plan;
-
-    // Se já usou tudo o que podia no mês
-    if ($subscription->uses_this_month >= $plan->monthly_limit) {
-        throw new \Exception("Limite mensal de agendamentos atingido para o seu plano.");
-    }
-
-    return true;
-}
 }

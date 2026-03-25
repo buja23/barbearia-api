@@ -15,11 +15,11 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
             // Adiciona campos se não existirem
             if (!Schema::hasColumn('users', 'cpf')) {
-                $table->string('cpf')->nullable()->unique()->encrypted()->comment('CPF encriptado do usuário');
+                $table->text('cpf')->nullable()->comment('CPF encriptado (Laravel model cast)');
             }
             
             if (!Schema::hasColumn('users', 'phone')) {
-                $table->string('phone')->nullable()->encrypted()->comment('Telefone encriptado do usuário');
+                $table->text('phone')->nullable()->comment('Telefone encriptado (Laravel model cast)');
             }
 
             // Indices para melhor performance

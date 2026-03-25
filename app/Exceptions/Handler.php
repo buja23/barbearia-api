@@ -50,6 +50,11 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Throwable $exception)
     {
+        // Apenas rotas de API retornam JSON. Painel Filament usa renderização HTML normal.
+        if (!$request->is('api/*') && !$request->expectsJson()) {
+            return parent::render($request, $exception);
+        }
+
         // ✅ Erro 404 - Recurso não encontrado
         if ($exception instanceof ModelNotFoundException) {
             return response()->json([

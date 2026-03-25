@@ -17,6 +17,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 
 class SubscriptionResource extends Resource
 {
@@ -147,6 +148,11 @@ class SubscriptionResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['user', 'plan']);
     }
 
     public static function getPages(): array

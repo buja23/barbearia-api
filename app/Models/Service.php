@@ -19,6 +19,12 @@ class Service extends Model
         'is_active',
     ];
 
+    protected $casts = [
+        'price'            => 'decimal:2',
+        'duration_minutes' => 'integer',
+        'is_active'        => 'boolean',
+    ];
+
     // Relação: Um serviço pertence a uma Barbearia
     public function barbershop(): BelongsTo
     {

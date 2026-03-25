@@ -9,6 +9,7 @@ use App\Services\PaymentService;
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -90,6 +91,15 @@ class AppointmentResource extends Resource
                             }),
 
                         Hidden::make('scheduled_at')->required(),
+
+                        Placeholder::make('scheduled_preview')
+                            ->label('Horário Confirmado')
+                            ->content(fn (Get $get): string =>
+                                $get('scheduled_at')
+                                    ? Carbon::parse($get('scheduled_at'))->format('d/m/Y \\\u00e0s H:i')
+                                    : '— Selecione o barbeiro, data e horário acima —'
+                            )
+                            ->columnSpanFull(),
                     ])->columns(3),
 
                 Section::make('Detalhes do Serviço')

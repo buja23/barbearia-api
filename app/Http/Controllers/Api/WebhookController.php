@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
-use App\Models\Subscription; // Importante
+use App\Models\Subscription;
+use App\Models\Barbershop;
+use App\Models\SaasPlan;
 use App\Notifications\AppointmentConfirmed;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -123,7 +125,13 @@ class WebhookController extends Controller
         $client  = new PaymentClient();
         $payment = $client->get($paymentId);
 
-        // 2. Busca o agendamento
+        // 2a. Verifica se é pagamento SaaS (assinatura da plataforma)
+        $barbershop = Barbershop::where('saas_payment_id', $paymentId)->first();
+        if ($barbershop) {
+            return $this->handleSaasPayment($payment, $barbershop);
+        }
+
+        // 2b. Busca o agendamento
         $appointment = Appointment::where('payment_id', $paymentId)->first();
 
         if ($appointment) {
@@ -147,4 +155,33 @@ class WebhookController extends Controller
 
         return response()->json(['status' => 'appointment_not_found'], 404);
     }
-}
+
+    /**
+     * Ativa assinatura SaaS da plataforma quando pagamento PIX é aprovado.
+     */
+    protected function handleSaasPayment(object $payment, Barbershop $barbershop)
+    {
+        if ($payment->status !== 'approved') {
+            return response()->json(['status' => 'saas_payment_pending'], 200);
+        }
+
+        $plan = $barbershop->saasPlan;
+
+        $barbershop->update([
+            'subscription_status'     => 'active',
+            'subscription_expires_at' => now()->addMonth(),
+            'subscription_plan'       => $plan?->name ?? 'Pro',
+            // Limpa dados do PIX após uso
+            'saas_pix_copy_paste'     => null,
+            'saas_pix_qr_code'        => null,
+        ]);
+
+        Log::channel('audit')->info('Assinatura SaaS ativada via webhook', [
+            'barbershop_id' => $barbershop->id,
+            'payment_id'    => $payment->id,
+            'plan'          => $plan?->name,
+            'expires_at'    => now()->addMonth()->toIso8601String(),
+        ]);
+
+        return response()->json(['status' => 'saas_activated'], 200);
+    }}

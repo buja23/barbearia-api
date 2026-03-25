@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\UpdateUserRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -77,32 +78,25 @@ class AuthController extends Controller
         return response()->json(['message' => 'Logout realizado com sucesso']);
     }
 
-    public function update(Request $request)
+    public function update(UpdateUserRequest $request)
     {
-        $user = $request->user();
+        $user      = $request->user();
+        $validated = $request->validated();
 
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
-        ]);
-
-        // Se o email foi alterado, requerer verificação novamente
+        // Se o email foi alterado, reseta verificação
         if ($user->email !== $validated['email']) {
-            $validated['email_verified_at'] = null; // Reseta a verificação
-            
-            // OPCIONAL: Enviar email de verificação
-            // $user->sendEmailVerificationNotification();
+            $validated['email_verified_at'] = null;
         }
 
         $user->update([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'email_verified_at' => $validated['email_verified_at'] ?? $user->email_verified_at,
+            'name'               => $validated['name'],
+            'email'              => $validated['email'],
+            'email_verified_at'  => $validated['email_verified_at'] ?? $user->email_verified_at,
         ]);
 
         return response()->json([
             'message' => 'Perfil atualizado com sucesso!',
-            'user' => $user
+            'user'    => $user,
         ]);
     }
 }

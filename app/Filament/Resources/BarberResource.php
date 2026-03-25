@@ -13,6 +13,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\ImageColumn;
+use Illuminate\Database\Eloquent\Builder;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Table;
@@ -22,8 +23,9 @@ class BarberResource extends Resource
     protected static ?string $model = Barber::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-users';
-
     protected static ?string $navigationLabel = 'Barbeiros';
+    // Scoping automático: só mostra barbeiros da barbearia logada
+    protected static ?string $tenantOwnershipRelationshipName = 'barbershop';
 
     protected static ?string $modelLabel = 'Barbeiro';
 
@@ -33,11 +35,6 @@ class BarberResource extends Resource
             ->schema([
                 Section::make('Dados do Profissional')
                     ->schema([
-                        Select::make('barbershop_id')
-                            ->relationship('barbershop', 'name')
-                            ->required()
-                            ->label('Barbearia'),
-
                         TextInput::make('name')
                             ->required()
                             ->maxLength(255)
@@ -132,6 +129,11 @@ class BarberResource extends Resource
         return [
             //
         ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['barbershop']);
     }
 
     public static function getPages(): array

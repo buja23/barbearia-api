@@ -9,6 +9,8 @@ use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\BarberController;
 use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\WebhookController;
+use App\Http\Controllers\Api\ForgotPasswordController;
+use App\Http\Controllers\Api\ResetPasswordController;
 // 👇 Adicione este import novo!
 use App\Http\Controllers\Api\SubscriptionController; 
 
@@ -16,10 +18,12 @@ use App\Http\Controllers\Api\SubscriptionController;
 Route::middleware('throttle:' . env('RATE_LIMIT_AUTH', 5) . ',1')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/password/forgot', [ForgotPasswordController::class, 'sendResetLink']);
+    Route::post('/password/reset', [ResetPasswordController::class, 'reset']);
 });
 
 /* --- 2. Webhooks (Pagamentos) --- */
-Route::post('/webhooks/mercadopago', [WebhookController::class, 'handle']);
+Route::middleware('throttle:60,1')->post('/webhooks/mercadopago', [WebhookController::class, 'handle']);
 
 /* 
 --- 3. ÁREA PROTEGIDA (Requer Login no App) --- 

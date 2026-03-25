@@ -15,6 +15,7 @@ use Filament\Resources\Resource;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ProductResource extends Resource
 {
@@ -23,6 +24,8 @@ class ProductResource extends Resource
     protected static ?string $navigationLabel = 'Estoque de Produtos';
     protected static ?string $modelLabel      = 'Produto';
     protected static ?int $navigationSort     = 3;
+    // Scoping automático: só mostra produtos da barbearia logada
+    protected static ?string $tenantOwnershipRelationshipName = 'barbershop';
 
     public static function form(Form $form): Form
     {
@@ -211,6 +214,11 @@ class ProductResource extends Resource
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make(),
             ]);
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['barbershop']);
     }
 
     public static function getPages(): array

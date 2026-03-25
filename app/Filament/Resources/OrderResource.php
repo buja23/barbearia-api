@@ -16,6 +16,8 @@ class OrderResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
     protected static ?string $navigationLabel = 'Vendas & Caixa';
     protected static ?int $navigationSort = 2;
+    // Scoping automático: só mostra pedidos da barbearia logada
+    protected static ?string $tenantOwnershipRelationshipName = 'barbershop';
 
     public static function form(Forms\Form $form): Forms\Form
     {
@@ -63,7 +65,15 @@ class OrderResource extends Resource
                             ->schema([
                                 Forms\Components\Select::make('product_id')
                                     ->label('Produto')
-                                    ->options(Product::all()->pluck('name', 'id'))
+                                    ->options(function () {
+                                        return \App\Models\Product::query()
+                                            ->when(
+                                                filament()->getTenant(),
+                                                fn ($q, $t) => $q->where('barbershop_id', $t->id)
+                                            )
+                                            ->pluck('name', 'id')
+                                            ->toArray();
+                                    })
                                     ->required()
                                     ->searchable()
                                     ->live()

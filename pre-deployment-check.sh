@@ -99,6 +99,45 @@ else
     ((FAILED++))
 fi
 
+# 8-EXTRA. Verificar MAIL_MAILER não é 'log' em produção
+MAIL_MAILER=$(grep "^MAIL_MAILER=" .env | cut -d'=' -f2)
+if [ "$MAIL_MAILER" = "log" ]; then
+    echo -e "${RED}❌${NC} MAIL_MAILER=log - emails não serão enviados em produção!"
+    ((FAILED++))
+else
+    echo -e "${GREEN}✅${NC} MAIL_MAILER=$MAIL_MAILER"
+    ((PASSED++))
+fi
+
+# 8-EXTRA-B. Verificar LOG_LEVEL não é 'debug'
+LOG_LEVEL=$(grep "^LOG_LEVEL=" .env | cut -d'=' -f2)
+if [ "$LOG_LEVEL" = "debug" ]; then
+    echo -e "${YELLOW}⚠️${NC} LOG_LEVEL=debug - muito verboso para produção (use info ou notice)"
+    ((FAILED++))
+else
+    echo -e "${GREEN}✅${NC} LOG_LEVEL=$LOG_LEVEL"
+    ((PASSED++))
+fi
+
+# 8-EXTRA-C. Verificar QUEUE_CONNECTION não é 'sync'
+QUEUE_CONN=$(grep "^QUEUE_CONNECTION=" .env | cut -d'=' -f2)
+if [ "$QUEUE_CONN" = "sync" ]; then
+    echo -e "${RED}❌${NC} QUEUE_CONNECTION=sync - notificações e jobs rodam de forma síncrona (lento)!"
+    ((FAILED++))
+else
+    echo -e "${GREEN}✅${NC} QUEUE_CONNECTION=$QUEUE_CONN"
+    ((PASSED++))
+fi
+
+# 8-EXTRA-D. Verificar MERCADOPAGO_ACCESS_TOKEN configurado
+if grep -q "^MERCADOPAGO_ACCESS_TOKEN=" .env && [ ! -z "$(grep '^MERCADOPAGO_ACCESS_TOKEN=' .env | cut -d'=' -f2)" ]; then
+    echo -e "${GREEN}✅${NC} MERCADOPAGO_ACCESS_TOKEN configurado"
+    ((PASSED++))
+else
+    echo -e "${RED}❌${NC} MERCADOPAGO_ACCESS_TOKEN não configurado"
+    ((FAILED++))
+fi
+
 echo ""
 echo "📦 VERIFICAÇÕES DE DEPENDÊNCIAS:"
 echo "---"

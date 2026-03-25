@@ -1,11 +1,13 @@
 <?php
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Appointment extends Model
 {
+    use HasFactory;
     protected $fillable = [
         'barbershop_id',
         'barber_id',
@@ -59,14 +61,15 @@ class Appointment extends Model
 {
     static::updating(function ($appointment) {
         // Quando o status mudar para 'completed', calculamos a comissão
-        if ($appointment->isDirty('status') && in_array($appointment->status, ['completed'])) {
-                $barber = $appointment->barber;
-                if ($barber && $barber->commission_percentage) {
-                    $appointment->barber_commission_value = ($appointment->total_price * $barber->commission_percentage) / 100;
-                }
-            
+        if ($appointment->isDirty('status') && $appointment->status === 'completed') {
+            $barber = $appointment->barber;
+            if ($barber?->commission_percentage) {
+                $appointment->barber_commission_value =
+                    ($appointment->total_price * $barber->commission_percentage) / 100;
+            }
+
             // Se for assinante, incrementa o uso do mês
-            if ($appointment->user && $appointment->user->subscription) {
+            if ($appointment->user?->subscription) {
                 $appointment->user->subscription->increment('uses_this_month');
             }
         }

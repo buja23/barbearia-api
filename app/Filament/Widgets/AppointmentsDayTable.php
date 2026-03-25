@@ -37,7 +37,9 @@ class AppointmentsDayTable extends BaseWidget
         return $table
             ->query(
                 // Filtra dinamicamente pela data selecionada no calendário
-                Appointment::query()->whereDate('scheduled_at', $this->dataSelecionada)
+                Appointment::query()
+                    ->whereDate('scheduled_at', $this->dataSelecionada)
+                    ->when(filament()->getTenant(), fn ($q, $t) => $q->where('barbershop_id', $t->id))
             )
             ->columns([
                 Tables\Columns\TextColumn::make('scheduled_at')

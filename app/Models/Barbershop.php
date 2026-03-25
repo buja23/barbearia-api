@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsTo as BelongsToAlias;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Barbershop extends Model
@@ -22,11 +23,15 @@ class Barbershop extends Model
         'trial_ends_at',
         'subscription_expires_at',
         'subscription_plan',
+        'saas_plan_id',
+        'saas_payment_id',
+        'saas_pix_copy_paste',
+        'saas_pix_qr_code',
     ];
 
     protected $casts = [
-        'trial_ends_at'            => 'datetime',
-        'subscription_expires_at'  => 'datetime',
+        'trial_ends_at'           => 'datetime',
+        'subscription_expires_at' => 'datetime',
     ];
 
     // --- Relacionamentos ---
@@ -34,6 +39,11 @@ class Barbershop extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function saasPlan(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(SaasPlan::class, 'saas_plan_id');
     }
 
     public function services(): HasMany

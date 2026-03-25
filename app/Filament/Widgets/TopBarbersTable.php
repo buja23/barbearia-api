@@ -18,6 +18,7 @@ class TopBarbersTable extends BaseWidget
         return $table
             ->query(
                 Barber::query()
+                    ->when(filament()->getTenant(), fn ($q, $t) => $q->where('barbershop_id', $t->id))
                     ->withCount(['appointments' => function (Builder $query) {
                         $query->where('status', 'completed')
                               ->whereMonth('scheduled_at', now()->month);

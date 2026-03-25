@@ -3,12 +3,15 @@
 namespace App\Services;
 
 use App\Models\Appointment;
+use App\Models\Subscription;
 use Illuminate\Support\Facades\Log;
 use MercadoPago\Client\Payment\PaymentClient;
 use MercadoPago\Client\Common\RequestOptions;
 use MercadoPago\MercadoPagoConfig;
 use MercadoPago\Exceptions\MPApiException;
 use App\Models\Order;
+use App\Models\Barbershop;
+use App\Models\SaasPlan;
 
 class PaymentService
 {
@@ -108,6 +111,75 @@ class PaymentService
         }
     }
 
+    /**
+     * Gera um pagamento via PIX para ativação de assinatura.
+     */
+    public function createSubscriptionPix(Subscription $subscription): array
+    {
+        try {
+            $client = new PaymentClient();
+            $user   = $subscription->user;
+            $plan   = $subscription->plan;
+            $cpf    = $user->cpf ?? env('MERCADOS_PAGO_TEST_CPF', '19119119100');
+
+            $paymentData = [
+                'transaction_amount' => (float) $plan->price,
+                'description'        => 'Assinatura - ' . $plan->name,
+                'payment_method_id'  => 'pix',
+                'payer'              => [
+                    'email'          => $user->email,
+                    'first_name'     => $user->name,
+                    'last_name'      => 'Assinante',
+                    'identification' => [
+                        'type'   => 'CPF',
+                        'number' => preg_replace('/\D/', '', $cpf),
+                    ],
+                ],
+            ];
+
+            $idempotencyKey = 'sub_' . $subscription->id . '_' . uniqid();
+            $requestOptions = new \MercadoPago\Client\Common\RequestOptions();
+            $requestOptions->setCustomHeaders(['x-idempotency-key' => $idempotencyKey]);
+
+            $payment = $client->create($paymentData, $requestOptions);
+            $pixData = $payment->point_of_interaction->transaction_data ?? null;
+
+            if (!$pixData) {
+                throw new \Exception('API não retornou dados do Pix.');
+            }
+
+            // Salva o external_id para o webhook de renovação encontrar a assinatura
+            $subscription->update([
+                'external_id' => (string) $payment->id,
+            ]);
+
+            Log::channel('audit')->info('PIX de assinatura criado', [
+                'payment_id'      => (string) $payment->id,
+                'subscription_id' => $subscription->id,
+                'user_id'         => $user->id,
+                'amount'          => $plan->price,
+            ]);
+
+            return [
+                'success'    => true,
+                'payment_id' => $payment->id,
+                'qr_code'    => $pixData->qr_code,
+            ];
+
+        } catch (\MercadoPago\Exceptions\MPApiException $e) {
+            $response = $e->getApiResponse()->getContent();
+            Log::error('Erro MercadoPago (Assinatura): ' . json_encode($response));
+            $msg = $response['message'] ?? 'Erro desconhecido na API';
+
+            return ['success' => false, 'error' => "Mercado Pago recusou: $msg"];
+
+        } catch (\Exception $e) {
+            Log::error('Erro interno (Assinatura PIX): ' . $e->getMessage());
+
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
     public function createOrderPix(Order $order): array
     {
         try {
@@ -142,5 +214,75 @@ class PaymentService
         }
     }
 
+    /**
+     * Gera PIX para contratação do plano SaaS da plataforma (dono da barbearia).
+     * O webhook confirma e ativa a barbearia com subscription_status='active'.
+     */
+    public function createSaasPix(Barbershop $barbershop, SaasPlan $plan): array
+    {
+        try {
+            $client = new PaymentClient();
+            $user   = $barbershop->user;
+            $cpf    = $user->cpf ?? env('MERCADOS_PAGO_TEST_CPF', '19119119100');
 
+            $paymentData = [
+                'transaction_amount' => (float) $plan->price,
+                // Prefix SAAS: permite o webhook identificar este tipo de pagamento
+                'description'        => 'SAAS:' . $barbershop->id . ':' . $plan->id . ' - ' . $plan->name,
+                'payment_method_id'  => 'pix',
+                'payer'              => [
+                    'email'          => $user->email,
+                    'first_name'     => $user->name,
+                    'last_name'      => 'Barbearia',
+                    'identification' => [
+                        'type'   => 'CPF',
+                        'number' => preg_replace('/\D/', '', $cpf),
+                    ],
+                ],
+            ];
+
+            $idempotencyKey = 'saas_' . $barbershop->id . '_' . $plan->id . '_' . uniqid();
+            $requestOptions = new RequestOptions();
+            $requestOptions->setCustomHeaders(['x-idempotency-key' => $idempotencyKey]);
+
+            $payment = $client->create($paymentData, $requestOptions);
+            $pixData = $payment->point_of_interaction->transaction_data ?? null;
+
+            if (!$pixData) {
+                throw new \Exception('API não retornou dados do PIX.');
+            }
+
+            // Persiste dados do pagamento na barbearia para polling e webhook
+            $barbershop->update([
+                'saas_plan_id'        => $plan->id,
+                'saas_payment_id'     => (string) $payment->id,
+                'saas_pix_copy_paste' => $pixData->qr_code,
+                'saas_pix_qr_code'    => $pixData->qr_code_base64,
+            ]);
+
+            Log::channel('audit')->info('PIX SaaS criado', [
+                'payment_id'    => (string) $payment->id,
+                'barbershop_id' => $barbershop->id,
+                'plan_id'       => $plan->id,
+                'amount'        => $plan->price,
+            ]);
+
+            return [
+                'success'        => true,
+                'payment_id'     => (string) $payment->id,
+                'qr_code'        => $pixData->qr_code,
+                'qr_code_base64' => $pixData->qr_code_base64,
+            ];
+
+        } catch (MPApiException $e) {
+            $response = $e->getApiResponse()->getContent();
+            Log::error('Erro MercadoPago (SaaS PIX): ' . json_encode($response));
+            $msg = $response['message'] ?? 'Erro desconhecido na API';
+            return ['success' => false, 'error' => "Mercado Pago recusou: $msg"];
+
+        } catch (\Exception $e) {
+            Log::error('Erro interno (SaaS PIX): ' . $e->getMessage());
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
 }
