@@ -17,6 +17,7 @@ class SubscriptionFactory extends Factory
             'expires_at'      => now()->addMonth(),
             'status'          => 'active',
             'uses_this_month' => 0,
+            'remaining_cuts'  => 4,
         ];
     }
 

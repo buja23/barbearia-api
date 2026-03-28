@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class AuthTest extends TestCase
@@ -14,7 +15,7 @@ class AuthTest extends TestCase
     // Register
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function user_can_register_and_receives_token(): void
     {
         $response = $this->postJson('/api/register', [
@@ -30,7 +31,7 @@ class AuthTest extends TestCase
         $this->assertDatabaseHas('users', ['email' => 'joao@example.com', 'role' => 'client']);
     }
 
-    /** @test */
+    #[Test]
     public function register_fails_with_duplicate_email(): void
     {
         User::factory()->create(['email' => 'existing@example.com']);
@@ -44,7 +45,7 @@ class AuthTest extends TestCase
             ->assertJsonValidationErrors(['email']);
     }
 
-    /** @test */
+    #[Test]
     public function register_fails_with_weak_password(): void
     {
         $this->postJson('/api/register', [
@@ -56,7 +57,7 @@ class AuthTest extends TestCase
             ->assertJsonValidationErrors(['password']);
     }
 
-    /** @test */
+    #[Test]
     public function register_fails_with_password_below_minimum_length(): void
     {
         $this->postJson('/api/register', [
@@ -72,7 +73,7 @@ class AuthTest extends TestCase
     // Login
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function user_can_login_and_receives_token(): void
     {
         $user = User::factory()->create(['password' => bcrypt('Senha123456')]);
@@ -84,7 +85,7 @@ class AuthTest extends TestCase
             ->assertJsonStructure(['access_token', 'token_type', 'user']);
     }
 
-    /** @test */
+    #[Test]
     public function login_fails_with_wrong_password(): void
     {
         $user = User::factory()->create(['password' => bcrypt('Senha123456')]);
@@ -95,7 +96,7 @@ class AuthTest extends TestCase
         ])->assertStatus(422);
     }
 
-    /** @test */
+    #[Test]
     public function login_fails_with_unknown_email(): void
     {
         $this->postJson('/api/login', [
@@ -108,7 +109,7 @@ class AuthTest extends TestCase
     // Logout
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function authenticated_user_can_logout(): void
     {
         $user = User::factory()->create();
@@ -119,7 +120,7 @@ class AuthTest extends TestCase
             ->assertJson(['message' => 'Logout realizado com sucesso']);
     }
 
-    /** @test */
+    #[Test]
     public function unauthenticated_user_cannot_access_protected_route(): void
     {
         $this->getJson('/api/user')->assertStatus(401);
@@ -129,7 +130,7 @@ class AuthTest extends TestCase
     // Update profile
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function authenticated_user_can_update_profile(): void
     {
         $user = User::factory()->create(['email' => 'old@example.com']);

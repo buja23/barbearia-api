@@ -12,6 +12,7 @@ use App\Models\Subscription;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class AppointmentTest extends TestCase
@@ -57,7 +58,7 @@ class AppointmentTest extends TestCase
     // store()
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function client_can_create_appointment(): void
     {
         $scheduledAt = $this->nextWeekday()->format('Y-m-d H:i:s');
@@ -78,7 +79,7 @@ class AppointmentTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function appointment_in_the_past_is_rejected(): void
     {
         $this->actingAs($this->client)
@@ -90,7 +91,7 @@ class AppointmentTest extends TestCase
                 ->assertJsonValidationErrors(['scheduled_at']);
     }
 
-    /** @test */
+    #[Test]
     public function appointment_more_than_one_year_ahead_is_rejected(): void
     {
         $this->actingAs($this->client)
@@ -102,7 +103,7 @@ class AppointmentTest extends TestCase
                 ->assertJsonValidationErrors(['scheduled_at']);
     }
 
-    /** @test */
+    #[Test]
     public function appointment_fails_with_invalid_barber(): void
     {
         $this->actingAs($this->client)
@@ -114,7 +115,7 @@ class AppointmentTest extends TestCase
                 ->assertJsonValidationErrors(['barber_id']);
     }
 
-    /** @test */
+    #[Test]
     public function appointment_price_is_zero_when_client_has_active_subscription(): void
     {
         $plan = Plan::factory()->create(['cuts_per_month' => 4, 'price' => 0]);
@@ -137,7 +138,7 @@ class AppointmentTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function subscription_counter_increments_after_appointment(): void
     {
         $plan = Plan::factory()->create(['cuts_per_month' => 4, 'price' => 0]);
@@ -160,7 +161,7 @@ class AppointmentTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function unauthenticated_user_cannot_create_appointment(): void
     {
         $this->postJson('/api/appointments', [
@@ -174,7 +175,7 @@ class AppointmentTest extends TestCase
     // index()
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function user_can_only_list_their_own_appointments(): void
     {
         $otherClient = User::factory()->create();
@@ -205,7 +206,7 @@ class AppointmentTest extends TestCase
     // destroy()
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function user_can_cancel_their_own_appointment(): void
     {
         $appointment = Appointment::factory()->create([
@@ -223,11 +224,11 @@ class AppointmentTest extends TestCase
 
         $this->assertDatabaseHas('appointments', [
             'id'     => $appointment->id,
-            'status' => 'cancelled',
+            'status' => 'canceled',
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_cancel_another_users_appointment(): void
     {
         $otherClient = User::factory()->create();
@@ -243,7 +244,7 @@ class AppointmentTest extends TestCase
             ->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function cancelling_already_cancelled_appointment_returns_422(): void
     {
         $appointment = Appointment::factory()->cancelled()->create([
@@ -258,7 +259,7 @@ class AppointmentTest extends TestCase
             ->assertStatus(422);
     }
 
-    /** @test */
+    #[Test]
     public function cancelling_subscription_appointment_decrements_counter(): void
     {
         $plan = Plan::factory()->create(['cuts_per_month' => 4, 'price' => 0]);

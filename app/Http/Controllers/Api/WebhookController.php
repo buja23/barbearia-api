@@ -8,14 +8,14 @@ use App\Models\Subscription;
 use App\Models\Barbershop;
 use App\Models\SaasPlan;
 use App\Notifications\AppointmentConfirmed;
+use App\Services\PaymentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use MercadoPago\Client\Payment\PaymentClient;
 use MercadoPago\MercadoPagoConfig;
 
 class WebhookController extends Controller
 {
-    public function __construct()
+    public function __construct(private PaymentService $paymentService)
     {
         // Inicializa SDK com seu Token
         MercadoPagoConfig::setAccessToken(config('services.mercadopago.token', env('MERCADO_PAGO_ACCESS_TOKEN')));
@@ -139,8 +139,7 @@ class WebhookController extends Controller
         }
 
         // 1. Consulta o status real no Mercado Pago
-        $client  = new PaymentClient();
-        $payment = $client->get($paymentId);
+        $payment = $this->paymentService->getPayment($paymentId);
 
         // 2a. Verifica se é pagamento SaaS (assinatura da plataforma)
         $barbershop = Barbershop::where('saas_payment_id', $paymentId)->first();

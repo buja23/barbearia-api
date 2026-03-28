@@ -1,0 +1,142 @@
+name: CI — Testes e Segurança
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  # ============================================================
+  # JOB 1: Testes automatizados (PHPUnit)
+  # ============================================================
+  tests:
+    name: Testes (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        php: ["8.2", "8.3"]
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo, pdo_sqlite, pdo_pgsql, redis, mbstring, bcmath, ctype, json, openssl
+          coverage: none
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Instalar dependências
+        run: composer install --no-interaction --prefer-dist --no-progress --no-scripts
+
+      - name: Copiar .env de teste
+        run: cp .env.example .env
+
+      - name: Gerar APP_KEY
+        run: php artisan key:generate
+
+      - name: Rodar migrations (SQLite in-memory)
+        run: php artisan migrate --env=testing --force
+
+      - name: Rodar testes
+        run: php artisan test --parallel
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ":memory:"
+          CACHE_STORE: array
+          SESSION_DRIVER: array
+          QUEUE_CONNECTION: sync
+          REDIS_HOST: 127.0.0.1
+          MERCADO_PAGO_ACCESS_TOKEN: TEST-fake-token-ci
+          MERCADO_PAGO_WEBHOOK_SECRET: ci-webhook-secret
+
+  # ============================================================
+  # JOB 2: Análise estática (segurança e qualidade)
+  # ============================================================
+  security:
+    name: Segurança e Qualidade
+    runs-on: ubuntu-latest
+    needs: tests
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: mbstring, bcmath, ctype, json, openssl
+          coverage: none
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Instalar dependências
+        run: composer install --no-interaction --prefer-dist --no-progress --no-scripts
+
+      # Verifica vulnerabilidades conhecidas nos pacotes Composer
+      - name: Audit de vulnerabilidades (Composer)
+        run: composer audit
+
+      # Verifica se .env ou secrets não foram commitados por engano
+      - name: Verificar arquivos sensíveis no commit
+        run: |
+          if git ls-files | grep -E '(\.env$|\.env\.production|auth\.json|\.key$)'; then
+            echo "❌ ARQUIVO SENSÍVEL ENCONTRADO NO REPOSITÓRIO!"
+            exit 1
+          fi
+          echo "✅ Nenhum arquivo sensível encontrado."
+
+      # Verifica APP_DEBUG não está true no .env.example
+      - name: Verificar APP_DEBUG no .env.example
+        run: |
+          if grep -q "^APP_DEBUG=true" .env.example; then
+            echo "❌ APP_DEBUG=true no .env.example!"
+            exit 1
+          fi
+          echo "✅ APP_DEBUG está false no .env.example."
+
+  # ============================================================
+  # JOB 3: Deploy no Forge (só na branch main/master)
+  # ============================================================
+  deploy:
+    name: Deploy → Produção (Forge)
+    runs-on: ubuntu-latest
+    needs: [tests, security]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+
+    steps:
+      - name: Trigger deploy no Laravel Forge
+        run: |
+          echo "🚀 Disparando deploy no Forge..."
+          curl --silent --show-error --fail \
+            -X POST "${{ secrets.FORGE_DEPLOY_URL }}" \
+            -H "Content-Type: application/json" \
+            -d '{"commit": "${{ github.sha }}"}'
+          echo "✅ Deploy disparado com sucesso!"

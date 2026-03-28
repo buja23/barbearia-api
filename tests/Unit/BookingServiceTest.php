@@ -10,6 +10,7 @@ use App\Models\Service;
 use App\Models\User;
 use App\Services\BookingService;
 use Carbon\Carbon;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class BookingServiceTest extends TestCase
@@ -51,7 +52,7 @@ class BookingServiceTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function returns_slots_on_a_normal_opening_day(): void
     {
         // Use next Monday to avoid weekend issues
@@ -67,7 +68,7 @@ class BookingServiceTest extends TestCase
         $this->assertNotContains('19:00', $slots);
     }
 
-    /** @test */
+    #[Test]
     public function returns_empty_when_day_is_closed(): void
     {
         $sunday = Carbon::now()->next(Carbon::SUNDAY);
@@ -78,7 +79,7 @@ class BookingServiceTest extends TestCase
         $this->assertEmpty($slots);
     }
 
-    /** @test */
+    #[Test]
     public function returns_empty_when_no_opening_hour_configured(): void
     {
         // No OpeningHour row for this day at all
@@ -89,7 +90,7 @@ class BookingServiceTest extends TestCase
         $this->assertEmpty($slots);
     }
 
-    /** @test */
+    #[Test]
     public function excludes_lunch_break_slots(): void
     {
         $monday = Carbon::now()->next(Carbon::MONDAY);
@@ -105,7 +106,7 @@ class BookingServiceTest extends TestCase
         $this->assertContains('13:00', $slots);
     }
 
-    /** @test */
+    #[Test]
     public function excludes_slots_overlapping_existing_appointment(): void
     {
         $monday = Carbon::now()->next(Carbon::MONDAY);
@@ -132,7 +133,7 @@ class BookingServiceTest extends TestCase
         $this->assertContains('10:30', $slots);
     }
 
-    /** @test */
+    #[Test]
     public function cancelled_appointment_does_not_block_slot(): void
     {
         $monday = Carbon::now()->next(Carbon::MONDAY);
@@ -153,7 +154,7 @@ class BookingServiceTest extends TestCase
         $this->assertContains('10:00', $slots);
     }
 
-    /** @test */
+    #[Test]
     public function long_service_fills_end_of_day(): void
     {
         $monday = Carbon::now()->next(Carbon::MONDAY);
@@ -172,7 +173,7 @@ class BookingServiceTest extends TestCase
         $this->assertContains('18:00', $slots);
     }
 
-    /** @test */
+    #[Test]
     public function returns_empty_when_service_not_found(): void
     {
         $monday = Carbon::now()->next(Carbon::MONDAY);

@@ -183,6 +183,16 @@ class PaymentService
         }
     }
 
+    /**
+     * Busca os dados de um pagamento no Mercado Pago pelo ID.
+     * Extraído em método para permitir substituição em testes.
+     */
+    public function getPayment(string $paymentId): object
+    {
+        $client = new PaymentClient();
+        return $client->get($paymentId);
+    }
+
     public function createOrderPix(Order $order): array
     {
         try {

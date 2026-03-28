@@ -37,7 +37,7 @@ class AppointmentFactory extends Factory
 
     public function cancelled(): static
     {
-        return $this->state(fn () => ['status' => 'cancelled']);
+        return $this->state(fn () => ['status' => 'canceled']);
     }
 
     public function completed(): static

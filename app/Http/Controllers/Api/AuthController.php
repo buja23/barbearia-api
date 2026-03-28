@@ -72,8 +72,13 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        // Revoga o token que está sendo usado na requisição atual
-        $request->user()->currentAccessToken()->delete();
+        // Revoga o token que está sendo usado na requisição atual.
+        // currentAccessToken() retorna TransientToken em contextos de teste (actingAs),
+        // que não tem método delete() — por isso verificamos o tipo antes.
+        $token = $request->user()->currentAccessToken();
+        if ($token instanceof \Laravel\Sanctum\PersonalAccessToken) {
+            $token->delete();
+        }
 
         return response()->json(['message' => 'Logout realizado com sucesso']);
     }

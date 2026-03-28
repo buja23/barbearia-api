@@ -6,6 +6,7 @@ use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class SubscriptionTest extends TestCase
@@ -16,7 +17,7 @@ class SubscriptionTest extends TestCase
     // index()
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function user_can_view_their_active_subscription(): void
     {
         $user = User::factory()->create();
@@ -29,7 +30,7 @@ class SubscriptionTest extends TestCase
             ->assertJsonStructure(['id', 'status', 'uses_this_month', 'plan']);
     }
 
-    /** @test */
+    #[Test]
     public function returns_404_when_no_subscription(): void
     {
         $user = User::factory()->create();
@@ -39,7 +40,7 @@ class SubscriptionTest extends TestCase
             ->assertStatus(404);
     }
 
-    /** @test */
+    #[Test]
     public function expired_subscription_returns_404(): void
     {
         $user = User::factory()->create();
@@ -55,7 +56,7 @@ class SubscriptionTest extends TestCase
     // store()
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function user_can_subscribe_to_free_plan(): void
     {
         $user = User::factory()->create();
@@ -73,7 +74,7 @@ class SubscriptionTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function user_cannot_subscribe_twice(): void
     {
         $user = User::factory()->create();
@@ -86,7 +87,7 @@ class SubscriptionTest extends TestCase
             ->assertJsonPath('message', 'Você já possui uma assinatura ativa.');
     }
 
-    /** @test */
+    #[Test]
     public function subscribe_fails_with_inactive_plan(): void
     {
         $user = User::factory()->create();
@@ -94,10 +95,10 @@ class SubscriptionTest extends TestCase
 
         $this->actingAs($user)
             ->postJson('/api/subscribe', ['plan_id' => $plan->id])
-            ->assertStatus(404); // Plan not found by is_active filter
+            ->assertStatus(422); // Plan fails validation (is_active = false)
     }
 
-    /** @test */
+    #[Test]
     public function subscribe_fails_with_invalid_plan_id(): void
     {
         $user = User::factory()->create();
@@ -108,7 +109,7 @@ class SubscriptionTest extends TestCase
             ->assertJsonValidationErrors(['plan_id']);
     }
 
-    /** @test */
+    #[Test]
     public function unauthenticated_user_cannot_subscribe(): void
     {
         $plan = Plan::factory()->free()->create();
@@ -121,7 +122,7 @@ class SubscriptionTest extends TestCase
     // destroy()
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function user_can_cancel_subscription(): void
     {
         $user = User::factory()->create();
@@ -135,11 +136,11 @@ class SubscriptionTest extends TestCase
 
         $this->assertDatabaseHas('subscriptions', [
             'id'     => $sub->id,
-            'status' => 'cancelled',
+            'status' => 'canceled',
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function cancel_returns_404_when_no_subscription(): void
     {
         $user = User::factory()->create();

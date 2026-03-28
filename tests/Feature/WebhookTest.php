@@ -9,23 +9,30 @@ use App\Models\Service;
 use App\Models\Subscription;
 use App\Models\Plan;
 use App\Models\User;
+use App\Services\PaymentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
-use MercadoPago\Client\Payment\PaymentClient;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class WebhookTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function signedHeaders(string $body, string $secret = 'test-webhook-secret'): array
+    /**
+     * Generates x-signature and x-request-id headers that pass the controller's
+     * validateMercadoPagoSignature() check.
+     * Format: ts=<ts>,v1=hmac_sha256("id:<dataId>;request-id:<reqId>;ts:<ts>;", secret)
+     */
+    private function signedHeaders(string $dataId = '', string $secret = 'test-webhook-secret'): array
     {
-        $requestId = (string) now()->timestamp;
-        $data      = "{$requestId}.{$body}";
-        $hash      = hash_hmac('sha256', $data, $secret);
+        $ts        = (string) now()->timestamp;
+        $requestId = $ts . '_' . random_int(1000, 9999);
+        $manifest  = "id:{$dataId};request-id:{$requestId};ts:{$ts};";
+        $hash      = hash_hmac('sha256', $manifest, $secret);
 
         return [
-            'x-signature'  => $hash,
+            'x-signature'  => "ts={$ts},v1={$hash}",
             'x-request-id' => $requestId,
         ];
     }
@@ -43,20 +50,18 @@ class WebhookTest extends TestCase
     // Signature validation
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function webhook_with_invalid_signature_is_rejected(): void
     {
-        $body = json_encode(['type' => 'payment', 'data' => ['id' => '123']]);
-
         $this->withHeaders([
-            'x-signature'  => 'invalid-hash',
+            'x-signature'  => 'ts=12345,v1=invalid-hash',
             'x-request-id' => (string) now()->timestamp,
             'Content-Type' => 'application/json',
-        ])->post('/api/webhooks/mercadopago', json_decode($body, true))
+        ])->postJson('/api/webhooks/mercadopago', ['type' => 'payment', 'data' => ['id' => '123']])
             ->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function webhook_without_signature_headers_is_rejected(): void
     {
         $this->postJson('/api/webhooks/mercadopago', [
@@ -69,7 +74,7 @@ class WebhookTest extends TestCase
     // Payment approval → appointment confirmed
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function approved_payment_confirms_appointment(): void
     {
         Notification::fake();
@@ -90,22 +95,21 @@ class WebhookTest extends TestCase
             'payment_status' => 'pending',
         ]);
 
-        // Mock the Mercado Pago SDK response
-        $fakePayment = new \stdClass();
-        $fakePayment->id        = 'mp_pay_001';
-        $fakePayment->status    = 'approved';
+        $fakePayment           = new \stdClass();
+        $fakePayment->id       = 'mp_pay_001';
+        $fakePayment->status   = 'approved';
+        $fakePayment->external_reference = null;
 
-        $this->mock(PaymentClient::class, function ($mock) use ($fakePayment) {
-            $mock->shouldReceive('get')->once()->andReturn($fakePayment);
+        $this->mock(PaymentService::class, function ($mock) use ($fakePayment) {
+            $mock->shouldReceive('getPayment')->once()->andReturn($fakePayment);
         });
 
         $payload = $this->makePaymentPayload('mp_pay_001');
-        $body    = json_encode($payload);
 
         $this->withHeaders(array_merge(
-            $this->signedHeaders($body),
+            $this->signedHeaders('mp_pay_001'),
             ['Content-Type' => 'application/json']
-        ))->post('/api/webhooks/mercadopago', $payload)
+        ))->postJson('/api/webhooks/mercadopago', $payload)
             ->assertStatus(200)
             ->assertJsonPath('status', 'payment_updated');
 
@@ -116,7 +120,7 @@ class WebhookTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function already_confirmed_appointment_is_not_double_processed(): void
     {
         Notification::fake();
@@ -133,28 +137,27 @@ class WebhookTest extends TestCase
             'service_id'     => $service->id,
             'barbershop_id'  => $barbershop->id,
             'payment_id'     => 'mp_pay_002',
-            'status'         => 'confirmed', // Already confirmed
+            'status'         => 'confirmed',
             'payment_status' => 'approved',
         ]);
 
-        $fakePayment          = new \stdClass();
-        $fakePayment->id      = 'mp_pay_002';
-        $fakePayment->status  = 'approved';
+        $fakePayment                     = new \stdClass();
+        $fakePayment->id                 = 'mp_pay_002';
+        $fakePayment->status             = 'approved';
+        $fakePayment->external_reference = null;
 
-        $this->mock(PaymentClient::class, function ($mock) use ($fakePayment) {
-            $mock->shouldReceive('get')->once()->andReturn($fakePayment);
+        $this->mock(PaymentService::class, function ($mock) use ($fakePayment) {
+            $mock->shouldReceive('getPayment')->once()->andReturn($fakePayment);
         });
 
         $payload = $this->makePaymentPayload('mp_pay_002');
-        $body    = json_encode($payload);
 
         $this->withHeaders(array_merge(
-            $this->signedHeaders($body),
+            $this->signedHeaders('mp_pay_002'),
             ['Content-Type' => 'application/json']
-        ))->post('/api/webhooks/mercadopago', $payload)
+        ))->postJson('/api/webhooks/mercadopago', $payload)
             ->assertStatus(200);
 
-        // Notification should NOT be sent again
         Notification::assertNothingSent();
     }
 
@@ -162,7 +165,7 @@ class WebhookTest extends TestCase
     // Subscription renewal
     // -------------------------------------------------------------------------
 
-    /** @test */
+    #[Test]
     public function subscription_preapproval_webhook_renews_subscription(): void
     {
         $user = User::factory()->create();
@@ -180,19 +183,19 @@ class WebhookTest extends TestCase
             'action' => 'subscription_preapproval.updated',
             'data'   => ['id' => 'mp_sub_abc'],
         ];
-        $body = json_encode($payload);
 
         $this->withHeaders(array_merge(
-            $this->signedHeaders($body),
+            $this->signedHeaders('mp_sub_abc'),
             ['Content-Type' => 'application/json']
-        ))->post('/api/webhooks/mercadopago', $payload)
+        ))->postJson('/api/webhooks/mercadopago', $payload)
             ->assertStatus(200)
             ->assertJsonPath('status', 'subscription_updated');
 
         $this->assertDatabaseHas('subscriptions', [
             'id'              => $sub->id,
             'status'          => 'active',
-            'uses_this_month' => 0, // Counter reset
+            'uses_this_month' => 0,
         ]);
     }
 }
+

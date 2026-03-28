@@ -22,3 +22,11 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+create_test_client.php
+bk.py
+fix_blade.py
+fix_blade2.py
+fix_blade3.py
+fix_pix_temp.php
+fix-vulnerabilities.sh
+write_blade.py

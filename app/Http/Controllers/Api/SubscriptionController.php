@@ -68,6 +68,7 @@ class SubscriptionController extends Controller
                 'expires_at'       => now()->addMonth(),
                 'status'           => $isFree ? 'active' : 'pending',
                 'uses_this_month'  => 0,
+                'remaining_cuts'   => $plan->cuts_per_month ?? 0,
             ]);
 
             if ($isFree) {
