@@ -24,8 +24,10 @@ class WebhookTest extends TestCase
      * validateMercadoPagoSignature() check.
      * Format: ts=<ts>,v1=hmac_sha256("id:<dataId>;request-id:<reqId>;ts:<ts>;", secret)
      */
-    private function signedHeaders(string $dataId = '', string $secret = 'test-webhook-secret'): array
+    private function signedHeaders(string $dataId = '', ?string $secret = null): array
     {
+        // Usa o mesmo secret que o controller lê via config()
+        $secret  ??= config('services.mercadopago.webhook_secret', 'test-webhook-secret');
         $ts        = (string) now()->timestamp;
         $requestId = $ts . '_' . random_int(1000, 9999);
         $manifest  = "id:{$dataId};request-id:{$requestId};ts:{$ts};";
