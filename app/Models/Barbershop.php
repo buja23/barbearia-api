@@ -18,6 +18,8 @@ class Barbershop extends Model
         'slug',
         'phone',
         'address',
+        'pix_key',
+        'pix_key_type',
         'logo_path',
         'subscription_status',
         'trial_ends_at',
@@ -25,6 +27,7 @@ class Barbershop extends Model
         'subscription_plan',
         'saas_plan_id',
         'saas_payment_id',
+        'saas_last_payment_id',
         'saas_pix_copy_paste',
         'saas_pix_qr_code',
     ];
@@ -51,6 +54,16 @@ class Barbershop extends Model
         return $this->hasMany(Service::class);
     }
 
+    public function products(): HasMany
+    {
+        return $this->hasMany(Product::class);
+    }
+
+    public function plans(): HasMany
+    {
+        return $this->hasMany(Plan::class);
+    }
+
     public function barbers(): HasMany
     {
         return $this->hasMany(Barber::class);
@@ -59,6 +72,11 @@ class Barbershop extends Model
     public function appointments(): HasMany
     {
         return $this->hasMany(Appointment::class);
+    }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
     }
 
     public function openingHours(): HasMany

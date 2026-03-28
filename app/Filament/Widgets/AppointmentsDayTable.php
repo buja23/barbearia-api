@@ -56,7 +56,7 @@ class AppointmentsDayTable extends BaseWidget
                         'warning' => 'pending',
                         'success' => 'confirmed',
                         'info'    => 'completed',
-                        'danger'  => 'cancelled',
+                        'danger'  => 'canceled',
                     ]),
             ]);
     }

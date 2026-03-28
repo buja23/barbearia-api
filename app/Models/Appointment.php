@@ -68,9 +68,9 @@ class Appointment extends Model
                     ($appointment->total_price * $barber->commission_percentage) / 100;
             }
 
-            // Se for assinante, incrementa o uso do mês
-            if ($appointment->user?->subscription) {
-                $appointment->user->subscription->increment('uses_this_month');
+            // Se for assinante ativo, incrementa o uso do mês
+            if ($appointment->user?->activeSubscription) {
+                $appointment->user->activeSubscription->increment('uses_this_month');
             }
         }
     });

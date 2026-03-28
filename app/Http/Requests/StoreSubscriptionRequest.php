@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Database\Query\Builder;
 
 class StoreSubscriptionRequest extends FormRequest
 {
@@ -18,7 +19,9 @@ class StoreSubscriptionRequest extends FormRequest
             'plan_id' => [
                 'required',
                 'integer',
-                Rule::exists('plans', 'id')->where('is_active', true),
+                Rule::exists('plans', 'id')->where(function (Builder $query) {
+                    $query->where('is_active', true);
+                }),
             ],
         ];
     }

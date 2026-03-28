@@ -127,7 +127,7 @@ class AppointmentResource extends Resource
                             ->options([
                                 'pending'   => 'Pendente',
                                 'confirmed' => 'Confirmado',
-                                'cancelled' => 'Cancelado',
+                                'canceled'  => 'Cancelado',
                                 'completed' => 'Concluído',
                             ])
                             ->default('confirmed')
@@ -185,23 +185,23 @@ public static function table(Table $table): Table
                     'pending'   => 'Pendente',
                     'confirmed' => 'Confirmado',
                     'completed' => 'Concluído',
-                    'cancelled' => 'Cancelado',
+                    'canceled'  => 'Cancelado',
                     'no_show'   => 'Não Compareceu',
                     default     => $state,
                 })
                 ->color(fn(string $state): string => match ($state) {
-                    'pending'   => 'warning', // Amarelo
-                    'confirmed' => 'info',    // Azul
-                    'completed' => 'success', // Verde
-                    'cancelled' => 'danger',  // Vermelho
-                    'no_show'   => 'danger',  // Vermelho Escuro
+                    'pending'   => 'warning',
+                    'confirmed' => 'info',
+                    'completed' => 'success',
+                    'canceled'  => 'danger',
+                    'no_show'   => 'danger',
                     default     => 'gray',
                 })
                 ->icon(fn(string $state): string => match ($state) {
                     'pending'   => 'heroicon-m-clock',
                     'confirmed' => 'heroicon-m-calendar-days',
                     'completed' => 'heroicon-m-check-badge',
-                    'cancelled' => 'heroicon-m-x-circle',
+                    'canceled'  => 'heroicon-m-x-circle',
                     'no_show'   => 'heroicon-m-user-minus',
                     default     => 'heroicon-m-question-mark-circle',
                 })
@@ -227,7 +227,7 @@ public static function table(Table $table): Table
                     'pending'   => 'Pendente',
                     'confirmed' => 'Confirmado',
                     'completed' => 'Concluído',
-                    'cancelled' => 'Cancelado',
+                    'canceled'  => 'Cancelado',
                 ]),
             Tables\Filters\Filter::make('data_agendamento')
                 ->form([
@@ -260,7 +260,7 @@ public static function table(Table $table): Table
                     ->requiresConfirmation()
                     ->modalHeading('Receber em Dinheiro')
                     ->modalDescription('Confirmar o recebimento do valor total em dinheiro?')
-                    ->visible(fn(Appointment $record) => $record->payment_status !== 'approved' && $record->status !== 'cancelled')
+                    ->visible(fn(Appointment $record) => $record->payment_status !== 'approved' && $record->status !== 'canceled')
                     ->action(fn(Appointment $record) => $record->update([
                         'payment_status' => 'approved',
                         'payment_method' => 'cash' // Registra que foi dinheiro
@@ -273,22 +273,49 @@ public static function table(Table $table): Table
                 ->icon('heroicon-o-qr-code')
                 ->color('warning')
                 ->iconButton()
-                ->visible(fn(Appointment $record) => $record->payment_status !== 'approved' && $record->status !== 'cancelled' && $record->status !== 'completed')
+                ->visible(fn(Appointment $record) => $record->payment_status !== 'approved' && $record->status !== 'canceled' && $record->status !== 'completed')
                 ->modalHeading('Receber via Pix')
                 ->modalContent(function (Appointment $record, PaymentService $service) {
-                    // (Sua lógica do Pix mantém igual)
-                    if (empty($record->pix_copy_paste) || $record->payment_status === 'cancelled') {
-                            $result = $service->createPixPayment($record);
-                            if (! $result['success']) {
-                                Notification::make()->title('Erro Pix')->body($result['error'])->danger()->send();
-                                return view('filament.payments.error-modal', ['error' => $result['error']]);
-                            }
-                            $record->refresh();
+                    $barbershop = $record->barbershop;
+
+                    // Sem chave PIX cadastrada: bloqueia e orienta o dono
+                    if (empty($barbershop?->pix_key)) {
+                        $error = 'Sua barbearia ainda não tem uma chave PIX cadastrada. Acesse Configurações → Minha Barbearia → Recebimento via PIX e cadastre sua chave.';
+                        Notification::make()->title('Chave PIX não configurada')->body($error)->warning()->send();
+                        return view('filament.payments.error-modal', ['error' => $error]);
                     }
+
+                    // Gera (ou REgera) QR Code — sempre regenera se o payload antigo nao tem '***'
+                    if (empty($record->pix_copy_paste) || $record->payment_method !== 'pix' || !str_contains($record->pix_copy_paste, '***')) {
+                        $result = $service->generateLocalPixPayment($record);
+                        if (! $result['success']) {
+                            Notification::make()->title('Erro PIX')->body($result['error'])->danger()->send();
+                            return view('filament.payments.error-modal', ['error' => $result['error']]);
+                        }
+                        $record->refresh();
+                    }
+
                     return view('filament.payments.pix-modal', ['record' => $record]);
                 })
                 ->modalSubmitAction(false)
                 ->modalCancelAction(fn($action) => $action->label('Fechar')),
+
+            // 3b. CONFIRMAR PIX (aparece depois de gerar o QR Code)
+            Tables\Actions\Action::make('confirm_pix')
+                ->label('Confirmar PIX')
+                ->icon('heroicon-o-check-badge')
+                ->color('success')
+                ->iconButton()
+                ->visible(fn(Appointment $record) =>
+                    $record->payment_status === 'pending'
+                    && $record->payment_method === 'pix'
+                    && !empty($record->pix_copy_paste)
+                    && $record->status !== 'canceled'
+                )
+                ->requiresConfirmation()
+                ->modalHeading('Confirmar Pagamento PIX')
+                ->modalDescription('O cliente realizou o pagamento? Confirme para registrar como pago.')
+                ->action(fn(Appointment $record) => $record->update(['payment_status' => 'approved'])),
 
                 // 4. FINALIZAR ATENDIMENTO (Só aparece se confirmado)
                 Tables\Actions\Action::make('complete')
@@ -310,7 +337,7 @@ public static function table(Table $table): Table
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->visible(fn(Appointment $record) => !in_array($record->status, ['cancelled', 'no_show']))
+                    ->visible(fn(Appointment $record) => !in_array($record->status, ['canceled', 'no_show']))
                     ->action(fn(Appointment $record) => $record->update(['status' => 'no_show'])),
                     
                 Tables\Actions\Action::make('cancel')
@@ -318,7 +345,7 @@ public static function table(Table $table): Table
                     ->icon('heroicon-o-trash')
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->action(fn(Appointment $record) => $record->update(['status' => 'cancelled'])),
+                    ->action(fn(Appointment $record) => $record->update(['status' => 'canceled'])),
             ]),
         ])
         ->bulkActions([

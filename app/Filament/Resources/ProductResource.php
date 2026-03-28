@@ -1,6 +1,7 @@
 <?php
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\BarbershopResource;
 use App\Filament\Resources\ProductResource\Pages;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -16,6 +17,7 @@ use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 class ProductResource extends Resource
 {
@@ -64,6 +66,8 @@ class ProductResource extends Resource
                             ->label('Preço de Venda')
                             ->numeric()
                             ->prefix('R$')
+                            ->default(0)
+                            ->dehydrateStateUsing(fn ($state) => blank($state) ? 0 : $state)
                             ->helperText('Deixe 0 se for apenas para uso interno'),
 
                         Forms\Components\TextInput::make('quantity')
@@ -153,28 +157,52 @@ class ProductResource extends Resource
 
                         // Se for REVENDA: Cria Pedido e Gera Pix
                         if ($record->type === 'resale') {
-
-                            // 1. Cria o Pedido
                             $total = $qtd * $record->sale_price;
-                            $order = Order::create([
-                                'total_amount' => $total,
-                                'status'       => 'pending',
-                            ]);
 
-                            // 2. Adiciona o Item
-                            OrderItem::create([
-                                'order_id'   => $order->id,
-                                'product_id' => $record->id,
-                                'quantity'   => $qtd,
-                                'unit_price' => $record->sale_price,
-                                'cost_price' => $record->cost_price,
-                            ]);
+                            $order = DB::transaction(function () use ($record, $qtd, $total) {
+                                $order = Order::create([
+                                    'barbershop_id' => $record->barbershop_id,
+                                    'total_amount'  => $total,
+                                    'status'        => 'pending',
+                                ]);
 
-                            // 3. Baixa o Estoque
-                            $record->decrement('quantity', $qtd);
+                                OrderItem::create([
+                                    'order_id'   => $order->id,
+                                    'product_id' => $record->id,
+                                    'quantity'   => $qtd,
+                                    'unit_price' => $record->sale_price,
+                                    'cost_price' => $record->cost_price,
+                                ]);
 
-                            // 4. Gera o Pix
-                            $paymentService->createOrderPix($order);
+                                return $order;
+                            });
+
+                            $result = $paymentService->createOrderPix($order);
+
+                            if (! ($result['success'] ?? false)) {
+                                Notification::make()
+                                    ->title('Falha ao gerar PIX da venda')
+                                    ->body($result['error'] ?? 'Erro desconhecido ao criar o pagamento.')
+                                    ->danger()
+                                    ->persistent()
+                                    ->actions([
+                                        NotificationAction::make('configure_pix')
+                                            ->label('Cadastrar PIX da barbearia')
+                                            ->button()
+                                            ->url(BarbershopResource::getUrl('edit', ['record' => $record->barbershop_id]), shouldOpenInNewTab: true),
+                                    ])
+                                    ->send();
+
+                                $order->delete();
+
+                                return;
+                            }
+
+                            $order->refresh()->load('items.product');
+
+                            if ($order->status === 'approved') {
+                                $order->applyInventory();
+                            }
 
                             // 5. Notifica com Botão para ver o Pix
                             Notification::make()
@@ -186,7 +214,7 @@ class ProductResource extends Resource
                                     NotificationAction::make('pay')
                                         ->label('Ver QR Code Pix')
                                         ->button()
-                                        ->url("/admin/orders/{$order->id}/edit", shouldOpenInNewTab: true), // Vamos criar essa rota jaja
+                                        ->url(OrderResource::getUrl('edit', ['record' => $order]), shouldOpenInNewTab: true),
                                 ])
                                 ->send();
 

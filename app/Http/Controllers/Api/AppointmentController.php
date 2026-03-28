@@ -137,7 +137,7 @@ class AppointmentController extends Controller
             return response()->json(['message' => 'Não autorizado.'], 403);
         }
 
-        if ($appointment->status === 'cancelled') {
+        if ($appointment->status === 'canceled') {
             return response()->json(['message' => 'Já está cancelado.'], 422);
         }
 
@@ -156,7 +156,7 @@ class AppointmentController extends Controller
             }
         }
 
-        $appointment->update(['status' => 'cancelled']);
+        $appointment->update(['status' => 'canceled']);
 
         return response()->json(['message' => 'Agendamento cancelado.']);
     }

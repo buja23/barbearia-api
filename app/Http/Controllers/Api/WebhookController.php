@@ -55,26 +55,43 @@ class WebhookController extends Controller
 
     /**
      * Valida a assinatura do webhook do Mercado Pago
-     * Referência: https://www.mercadopago.com/developers/es/reference/webhooks/_api_v1_suscriptions_search/get_webhook_app_header_x_signature
+     * Referência: https://www.mercadopago.com/developers/pt-br/docs/your-integrations/notifications/webhooks
+     * Formato x-signature: ts=<timestamp>,v1=<hash>
+     * Manifest: id:<data.id>;request-id:<x-request-id>;ts:<ts>;
      */
     protected function validateMercadoPagoSignature(Request $request): bool
     {
-        $signature = $request->header('x-signature');
-        $timestamp = $request->header('x-request-id');
-        $secret = env('MERCADO_PAGO_WEBHOOK_SECRET');
+        $xSignature = $request->header('x-signature');
+        $xRequestId = $request->header('x-request-id');
+        $secret     = config('services.mercadopago.webhook_secret', env('MERCADO_PAGO_WEBHOOK_SECRET'));
 
-        // Se não tiver segredo configurado, retorna falso (segurança padrão)
-        if (!$secret || !$signature || !$timestamp) {
-            return false; // Log::warning('Missing webhook headers');
+        if (!$secret || !$xSignature || !$xRequestId) {
+            return false;
         }
 
-        // Mercado Pago usa HMAC SHA256
-        $body = $request->getContent();
-        $data = "{$timestamp}.{$body}";
-        $expectedHash = hash_hmac('sha256', $data, $secret);
-        $receivedHash = explode(',', $signature)[0] ?? '';
+        // Extrai ts e v1 do header x-signature (formato: "ts=123,v1=abc")
+        $parts = [];
+        foreach (explode(',', $xSignature) as $part) {
+            $kv = explode('=', $part, 2);
+            if (count($kv) === 2) {
+                $parts[trim($kv[0])] = trim($kv[1]);
+            }
+        }
 
-        return hash_equals($expectedHash, $receivedHash);
+        $ts = $parts['ts'] ?? null;
+        $v1 = $parts['v1'] ?? null;
+
+        if (!$ts || !$v1) {
+            return false;
+        }
+
+        // Constrói o manifest conforme documentação oficial do Mercado Pago
+        $dataId   = $request->input('data.id') ?? '';
+        $manifest = "id:{$dataId};request-id:{$xRequestId};ts:{$ts};";
+
+        $expectedHash = hash_hmac('sha256', $manifest, $secret);
+
+        return hash_equals($expectedHash, $v1);
     }
 
     /**
@@ -131,6 +148,24 @@ class WebhookController extends Controller
             return $this->handleSaasPayment($payment, $barbershop);
         }
 
+        $externalReference = (string) ($payment->external_reference ?? '');
+        if (str_starts_with($externalReference, 'saas:')) {
+            $segments = explode(':', $externalReference);
+            $barbershopId = isset($segments[1]) ? (int) $segments[1] : null;
+            $planId = isset($segments[2]) ? (int) $segments[2] : null;
+
+            $barbershop = $barbershopId ? Barbershop::find($barbershopId) : null;
+
+            if ($barbershop) {
+                if ($planId) {
+                    $barbershop->update(['saas_plan_id' => $planId]);
+                    $barbershop->refresh();
+                }
+
+                return $this->handleSaasPayment($payment, $barbershop);
+            }
+        }
+
         // 2b. Busca o agendamento
         $appointment = Appointment::where('payment_id', $paymentId)->first();
 
@@ -153,7 +188,7 @@ class WebhookController extends Controller
             return response()->json(['status' => 'payment_updated'], 200);
         }
 
-        return response()->json(['status' => 'appointment_not_found'], 404);
+        return response()->json(['status' => 'payment_target_not_found'], 404);
     }
 
     /**
@@ -165,12 +200,24 @@ class WebhookController extends Controller
             return response()->json(['status' => 'saas_payment_pending'], 200);
         }
 
+        if ($barbershop->saas_last_payment_id === (string) $payment->id) {
+            return response()->json(['status' => 'saas_payment_already_processed'], 200);
+        }
+
         $plan = $barbershop->saasPlan;
+        $billingCycleMonths = max(1, (int) ($plan?->billing_cycle_months ?? 1));
+        $baseDate = $barbershop->subscription_status === 'active'
+            && $barbershop->subscription_expires_at?->isFuture()
+            ? $barbershop->subscription_expires_at->copy()
+            : now();
+        $expiresAt = $baseDate->addMonthsNoOverflow($billingCycleMonths);
 
         $barbershop->update([
             'subscription_status'     => 'active',
-            'subscription_expires_at' => now()->addMonth(),
-            'subscription_plan'       => $plan?->name ?? 'Pro',
+            'subscription_expires_at' => $expiresAt,
+            'subscription_plan'       => $plan?->name ?? 'Basico',
+            'saas_payment_id'         => null,
+            'saas_last_payment_id'    => (string) $payment->id,
             // Limpa dados do PIX após uso
             'saas_pix_copy_paste'     => null,
             'saas_pix_qr_code'        => null,
@@ -180,7 +227,8 @@ class WebhookController extends Controller
             'barbershop_id' => $barbershop->id,
             'payment_id'    => $payment->id,
             'plan'          => $plan?->name,
-            'expires_at'    => now()->addMonth()->toIso8601String(),
+            'expires_at'    => $expiresAt->toIso8601String(),
+            'billing_cycle_months' => $billingCycleMonths,
         ]);
 
         return response()->json(['status' => 'saas_activated'], 200);

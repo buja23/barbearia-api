@@ -1,6 +1,4 @@
 <x-filament-widgets::widget>
-    {{-- Carrega FullCalendar --}}
-    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
 
     {{-- CONTAINER PRINCIPAL (Sem bordas, sem fundo branco padrão do filament) --}}
     <x-filament::section class="!p-0 !rounded-3xl !shadow-none !border-0 !ring-0 overflow-hidden bg-transparent">
@@ -52,6 +50,9 @@
             document.addEventListener('alpine:init', () => {
                 Alpine.data('calendarWidget', (wire, initialEvents) => ({
                     calendar: null,
+                    _skipFirstDatesSet: true,
+                    _cleanup: null,
+
                     init() {
                         let calendarEl = document.getElementById('calendar');
                         this.calendar = new FullCalendar.Calendar(calendarEl, {
@@ -71,6 +72,15 @@
                             
                             datesSet: (info) => {
                                 document.getElementById('calendar-title').innerText = info.view.title;
+
+                                // Ignora a primeira chamada (carga inicial) para não fazer request duplo
+                                if (this._skipFirstDatesSet) {
+                                    this._skipFirstDatesSet = false;
+                                    return;
+                                }
+
+                                // Ao navegar, pede os eventos do novo mês ao servidor
+                                wire.loadEventsForRange(info.startStr, info.endStr);
                             },
 
                             dateClick: (info) => {
@@ -81,6 +91,16 @@
                             }
                         });
                         this.calendar.render();
+
+                        // Quando o servidor retornar, substitui os eventos no calendário
+                        this._cleanup = Livewire.on('calendar-events-loaded', ({ events }) => {
+                            this.calendar.removeAllEvents();
+                            (events || []).forEach(e => this.calendar.addEvent(e));
+                        });
+                    },
+
+                    destroy() {
+                        if (this._cleanup) this._cleanup();
                     },
 
                     limparVisual() {

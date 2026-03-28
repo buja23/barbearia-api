@@ -24,6 +24,7 @@ class User extends Authenticatable implements FilamentUser, HasTenants
         'phone',
         'role',
         'barbershop_id',
+        'trial_ends_at',
     ];
 
     protected $hidden = [
@@ -38,6 +39,7 @@ class User extends Authenticatable implements FilamentUser, HasTenants
             'password'          => 'hashed',
             'cpf'               => 'encrypted',
             'phone'             => 'encrypted',
+            'trial_ends_at'     => 'datetime',
         ];
     }
 

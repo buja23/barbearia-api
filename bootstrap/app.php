@@ -16,6 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Security headers em todas as respostas
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
 
+        // Sanitiza dados sensíveis dos logs (CPF, tokens, senhas)
+        $middleware->append(\App\Http\Middleware\SanitizeLogging::class);
+
         // Registra o alias do middleware de assinatura SaaS
         $middleware->alias([
             'subscription.active' => \App\Http\Middleware\EnsureBusinessSubscriptionActive::class,

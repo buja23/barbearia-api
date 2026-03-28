@@ -9,14 +9,15 @@ class Subscription extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'user_id', 
-        'plan_id', 
-        'starts_at', 
-        'expires_at', 
-        'remaining_cuts', 
+        'user_id',
+        'plan_id',
+        'barbershop_id',
+        'starts_at',
+        'expires_at',
+        'remaining_cuts',
         'status',
         'uses_this_month',
-        'external_id'
+        'external_id',
     ];
 
     protected $casts = [
@@ -32,5 +33,10 @@ class Subscription extends Model
     public function plan(): BelongsTo
     {
         return $this->belongsTo(Plan::class);
+    }
+
+    public function barbershop(): BelongsTo
+    {
+        return $this->belongsTo(Barbershop::class);
     }
 }

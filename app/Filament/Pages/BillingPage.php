@@ -24,6 +24,7 @@ class BillingPage extends Page
     public ?string $pixCopyPaste    = null; // copy-paste text
     public ?string $paymentId       = null;
     public bool    $copied          = false;
+    public bool    $showPixDetails  = false;
 
     public function mount(): void
     {
@@ -34,6 +35,7 @@ class BillingPage extends Page
             $this->pixCopyPaste  = $barbershop->saas_pix_copy_paste;
             $this->pixQrCode     = $barbershop->saas_pix_qr_code;
             $this->selectedPlanId = $barbershop->saas_plan_id;
+            $this->showPixDetails = true;
         }
     }
 
@@ -64,6 +66,7 @@ class BillingPage extends Page
             $this->pixCopyPaste   = $result['qr_code'];
             $this->paymentId      = $result['payment_id'];
             $this->copied         = false;
+            $this->showPixDetails = true;
 
             Notification::make()
                 ->title('PIX gerado!')
@@ -78,6 +81,28 @@ class BillingPage extends Page
                 ->persistent()
                 ->send();
         }
+    }
+
+    public function checkoutWithCard(int $planId)
+    {
+        $barbershop = $this->getBarbershop();
+        $plan = SaasPlan::findOrFail($planId);
+
+        $paymentService = new PaymentService();
+        $result = $paymentService->createSaasCardCheckout($barbershop, $plan);
+
+        if (!$result['success']) {
+            Notification::make()
+                ->title('Erro ao iniciar checkout')
+                ->body($result['error'])
+                ->danger()
+                ->persistent()
+                ->send();
+
+            return null;
+        }
+
+        return redirect()->away($result['checkout_url']);
     }
 
     /**
@@ -122,6 +147,17 @@ class BillingPage extends Page
         $this->pixCopyPaste   = null;
         $this->paymentId      = null;
         $this->copied         = false;
+        $this->showPixDetails = false;
+    }
+
+    public function revealPixDetails(): void
+    {
+        $this->showPixDetails = true;
+    }
+
+    public function hidePixDetails(): void
+    {
+        $this->showPixDetails = false;
     }
 
     /**

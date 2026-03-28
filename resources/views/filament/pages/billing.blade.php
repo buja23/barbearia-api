@@ -4,246 +4,375 @@
         <div wire:poll.5000ms="checkPayment"></div>
     @endif
 
-    {{-- ====== BANNER DE STATUS DA ASSINATURA ====== --}}
     @php
         $barbershop = $this->getBarbershop();
-        $isActive   = $barbershop->isSubscriptionActive();
-        $onTrial    = $barbershop->isOnTrial();
-        $trialDays  = $barbershop->trialDaysRemaining();
+        $isActive = $barbershop->isSubscriptionActive();
+        $onTrial = $barbershop->isOnTrial();
+        $trialDays = $barbershop->trialDaysRemaining();
+        $monthlyReferencePlan = $this->plans->firstWhere('billing_cycle_months', 1);
+
+        if ($isActive) {
+            $statusLabel = 'Assinatura ativa';
+            $statusTitle = 'Plano ' . $barbershop->subscription_plan . ' em operação';
+            $statusBody = 'Sua assinatura vence em ' . $barbershop->subscription_expires_at?->format('d/m/Y') . '.';
+            $statusIcon = 'heroicon-o-check-badge';
+            $statusTone = 'border-emerald-200/80 bg-emerald-50/85 text-emerald-700 dark:border-emerald-800/80 dark:bg-emerald-900/20 dark:text-emerald-300';
+        } elseif ($onTrial) {
+            $statusLabel = 'Período de teste';
+            $statusTitle = $trialDays . ' ' . Str::plural('dia', $trialDays) . ' restante' . ($trialDays !== 1 ? 's' : '') . ' para escolher seu plano';
+            $statusBody = 'Assine agora para manter o acesso sem interrupção quando o teste terminar.';
+            $statusIcon = 'heroicon-o-clock';
+            $statusTone = 'border-amber-200/80 bg-amber-50/85 text-amber-700 dark:border-amber-700/80 dark:bg-amber-900/20 dark:text-amber-300';
+        } else {
+            $statusLabel = 'Acesso suspenso';
+            $statusTitle = 'Seu período de teste encerrou';
+            $statusBody = 'Escolha um plano abaixo para reativar sua barbearia e voltar a operar normalmente.';
+            $statusIcon = 'heroicon-o-exclamation-circle';
+            $statusTone = 'border-rose-200/80 bg-rose-50/85 text-rose-700 dark:border-rose-800/80 dark:bg-rose-900/20 dark:text-rose-300';
+        }
     @endphp
 
-    @if($isActive)
-        <div class="rounded-xl border border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800 p-4 flex items-center gap-3 mb-2">
-            <x-heroicon-o-check-badge class="w-6 h-6 text-green-600 dark:text-green-400 flex-shrink-0" />
-            <div>
-                <p class="text-sm font-semibold text-green-800 dark:text-green-300">
-                    Plano {{ $barbershop->subscription_plan }} ativo
-                </p>
-                <p class="text-xs text-green-600 dark:text-green-400">
-                    Sua assinatura vence em {{ $barbershop->subscription_expires_at?->format('d/m/Y') }}.
-                </p>
-            </div>
-        </div>
-    @elseif($onTrial)
-        <div class="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700 p-4 flex items-center gap-3 mb-2">
-            <x-heroicon-o-clock class="w-6 h-6 text-amber-600 dark:text-amber-400 flex-shrink-0" />
-            <div>
-                <p class="text-sm font-semibold text-amber-800 dark:text-amber-300">
-                    Período de teste — {{ $trialDays }} {{ Str::plural('dia', $trialDays) }} restante{{ $trialDays !== 1 ? 's' : '' }}
-                </p>
-                <p class="text-xs text-amber-600 dark:text-amber-400">
-                    Assine agora para não perder o acesso após o período gratuito.
-                </p>
-            </div>
-        </div>
-    @else
-        <div class="rounded-xl border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-700 p-4 flex items-center gap-3 mb-2">
-            <x-heroicon-o-exclamation-circle class="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0" />
-            <div>
-                <p class="text-sm font-semibold text-red-800 dark:text-red-300">
-                    Acesso suspenso — Seu período de teste encerrou
-                </p>
-                <p class="text-xs text-red-600 dark:text-red-400">
-                    Escolha um plano abaixo para reativar sua barbearia.
-                </p>
-            </div>
-        </div>
-    @endif
+    <div class="mx-auto max-w-7xl space-y-10">
+        <section class="overflow-hidden rounded-[30px] border border-gray-200/80 bg-white/95 px-6 py-8 shadow-[0_20px_60px_-32px_rgba(15,23,42,0.28)] dark:border-white/10 dark:bg-gray-950/75 sm:px-8 sm:py-10">
+            <div class="space-y-8">
+                <div class="inline-flex items-start gap-5 rounded-[24px] border px-5 py-5 {{ $statusTone }}">
+                    <span class="mt-0.5 inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-white/70 dark:bg-white/10">
+                        <x-dynamic-component :component="$statusIcon" class="h-5 w-5" />
+                    </span>
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-[0.2em] opacity-80">{{ $statusLabel }}</p>
+                        <h2 class="mt-2 text-base font-black tracking-[-0.02em] text-gray-950 dark:text-white">{{ $statusTitle }}</h2>
+                        <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">{{ $statusBody }}</p>
+                    </div>
+                </div>
 
-    {{-- ====== CHECKOUT PIX (aparece quando um plano foi selecionado) ====== --}}
-    @if($paymentId && $pixCopyPaste)
-        @php
-            $selectedPlan = $this->plans->find($selectedPlanId);
-        @endphp
-        <div class="rounded-2xl border border-amber-300 dark:border-amber-600 bg-white dark:bg-gray-800 shadow-lg overflow-hidden">
-            <div class="bg-gradient-to-r from-amber-500 to-amber-600 px-6 py-4 flex items-center justify-between">
                 <div>
-                    <h2 class="text-lg font-bold text-white">Finalizar assinatura — {{ $selectedPlan?->name }}</h2>
-                    <p class="text-amber-100 text-sm">
-                        Valor: <span class="font-bold">R$ {{ number_format((float) $selectedPlan?->price, 2, ',', '.') }}</span>
+                    <span class="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+                        Plano e cobrança
+                    </span>
+                    <h1 class="mt-6 max-w-3xl text-3xl font-black tracking-[-0.03em] text-gray-950 dark:text-white sm:text-5xl">
+                        Escolha seu plano e finalize a cobrança.
+                    </h1>
+                    <p class="mt-5 max-w-2xl text-sm leading-7 text-gray-600 dark:text-gray-300 sm:text-base">
+                        Mensal para flexibilidade. Semestral e anual para economia.
                     </p>
                 </div>
-                <button wire:click="cancelPix" class="text-amber-100 hover:text-white transition-colors text-sm underline">
-                    Trocar plano
-                </button>
             </div>
+        </section>
 
-            <div class="p-6 md:p-8">
-                <div class="grid md:grid-cols-2 gap-8 items-center">
+        @if($paymentId && $pixCopyPaste)
+            @php
+                $selectedPlan = $this->plans->find($selectedPlanId);
+                $selectedPlanDisplayName = $selectedPlan?->name === 'Basico' ? 'Básico' : $selectedPlan?->name;
+            @endphp
 
-                    {{-- QR Code --}}
-                    <div class="flex flex-col items-center gap-4">
-                        <p class="text-sm font-medium text-gray-500 dark:text-gray-400">
-                            Escaneie com seu app de banco:
-                        </p>
-                        @if($pixQrCode)
-                            <div class="border-4 border-amber-400 rounded-2xl p-3 bg-white inline-block shadow">
-                                <img
-                                    src="data:image/png;base64,{{ $pixQrCode }}"
-                                    alt="QR Code PIX"
-                                    class="w-48 h-48"
-                                >
+            <div class="grid gap-6 xl:grid-cols-[0.82fr_1.18fr] xl:items-start">
+                <aside class="space-y-6 xl:sticky xl:top-6">
+                    <div class="overflow-hidden rounded-[30px] border border-gray-200/80 bg-gray-950 text-white shadow-[0_18px_60px_-28px_rgba(15,23,42,0.55)] dark:border-white/10">
+                        <div class="bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.26),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0))] px-6 py-7 sm:px-7">
+                            <span class="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-amber-200/90">
+                                Cobrança em andamento
+                            </span>
+                            <h2 class="mt-4 text-3xl font-black tracking-[-0.03em] text-white">{{ $selectedPlanDisplayName }}</h2>
+                            <p class="mt-3 text-sm leading-7 text-white/70">
+                                Finalize agora para liberar sua assinatura.
+                            </p>
+
+                            <div class="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                                <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
+                                    <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-white/45">Ciclo</p>
+                                    <p class="mt-2 text-base font-semibold text-white">{{ $selectedPlan?->billing_cycle_label }}</p>
+                                    <p class="mt-1 text-sm text-white/65">{{ $selectedPlan?->billing_cycle_description }}</p>
+                                </div>
+                                <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
+                                    <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-white/45">Valor</p>
+                                    <p class="mt-2 text-base font-semibold text-white">R$ {{ number_format((float) $selectedPlan?->price, 2, ',', '.') }}</p>
+                                    <p class="mt-1 text-sm text-white/65">Ativação automática após confirmação.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rounded-[28px] border border-gray-200/80 bg-white/95 p-6 shadow-sm dark:border-white/10 dark:bg-gray-950/70">
+                        <p class="text-[11px] font-bold uppercase tracking-[0.22em] text-gray-500">Fluxo</p>
+                        <div class="mt-5 space-y-4">
+                            <div class="flex gap-3">
+                                <span class="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-sm font-bold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">1</span>
+                                <div>
+                                    <p class="text-sm font-semibold text-gray-900 dark:text-white">Escolha cartão ou PIX</p>
+                                    <p class="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-300">Cartão em destaque, PIX disponível.</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-3">
+                                <span class="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-sm font-bold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">2</span>
+                                <div>
+                                    <p class="text-sm font-semibold text-gray-900 dark:text-white">Confirme o pagamento</p>
+                                    <p class="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-300">A ativação é automática.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+
+                <section class="overflow-hidden rounded-[30px] border border-gray-200/80 bg-white/95 shadow-[0_20px_60px_-34px_rgba(15,23,42,0.3)] dark:border-white/10 dark:bg-gray-950/75">
+                    <div class="border-b border-gray-200/80 px-6 py-6 md:px-8 dark:border-white/10">
+                        <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+                            <div>
+                                <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-amber-700 dark:text-amber-300">Checkout da assinatura</p>
+                                <h2 class="mt-3 text-2xl font-black tracking-[-0.03em] text-gray-950 dark:text-white sm:text-3xl">Finalize sua cobrança</h2>
+                                <p class="mt-2 max-w-2xl text-sm leading-6 text-gray-600 dark:text-gray-300">
+                                    Valor do ciclo {{ $selectedPlan?->billing_cycle_label }}: <span class="font-bold text-gray-950 dark:text-white">R$ {{ number_format((float) $selectedPlan?->price, 2, ',', '.') }}</span>
+                                </p>
+                            </div>
+                            <button wire:click="cancelPix" class="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:border-amber-300 hover:text-amber-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:border-amber-500/40 dark:hover:text-amber-300">
+                                Trocar plano
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="p-6 md:p-8">
+                        <div class="grid gap-5 lg:grid-cols-2">
+                            <div class="rounded-[26px] border border-gray-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,250,252,0.9))] p-6 dark:border-white/10 dark:bg-white/5">
+                                <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-500">Mais rápido</p>
+                                <h3 class="mt-3 text-xl font-black tracking-[-0.02em] text-gray-900 dark:text-white">Pagar com cartão</h3>
+                                <p class="mt-3 text-sm leading-6 text-gray-700 dark:text-gray-300">
+                                    Checkout direto do Mercado Pago.
+                                </p>
+                                <div class="mt-6 space-y-3">
+                                    <div class="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 dark:border-white/10 dark:bg-gray-950/40 dark:text-gray-300">
+                                        Mais rápido.
+                                    </div>
+                                    <button
+                                        wire:click="checkoutWithCard({{ $selectedPlanId }})"
+                                        class="inline-flex w-full items-center justify-center rounded-2xl bg-gray-950 px-5 py-4 text-sm font-bold text-white transition hover:bg-gray-800 dark:bg-white dark:text-gray-950 dark:hover:bg-gray-100"
+                                    >
+                                        Abrir checkout de cartão
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="rounded-[26px] border border-amber-200/80 bg-[linear-gradient(180deg,rgba(255,251,235,0.65),rgba(255,255,255,0.96))] p-6 dark:border-amber-500/20 dark:bg-[linear-gradient(180deg,rgba(245,158,11,0.08),rgba(255,255,255,0.02))]">
+                                <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                    <div>
+                                        <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-amber-700 dark:text-amber-300">Alternativa</p>
+                                        <h3 class="mt-3 text-xl font-black tracking-[-0.02em] text-gray-900 dark:text-white">Pagar com PIX</h3>
+                                        <p class="mt-3 text-sm leading-6 text-gray-700 dark:text-gray-300">
+                                            QR Code e copia e cola na mesma tela.
+                                        </p>
+                                    </div>
+                                    @if($showPixDetails)
+                                        <button wire:click="hidePixDetails" class="text-sm font-semibold text-gray-700 underline decoration-gray-300 underline-offset-4 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
+                                            Ocultar PIX
+                                        </button>
+                                    @else
+                                        <button wire:click="revealPixDetails" class="inline-flex items-center justify-center rounded-2xl border border-amber-300 bg-white px-4 py-3 text-sm font-bold text-amber-700 transition hover:border-amber-400 hover:bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/15">
+                                            Mostrar QR Code
+                                        </button>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+
+                        @if($showPixDetails)
+                            <div class="mt-6 grid gap-6 border-t border-gray-200 pt-6 dark:border-white/10 lg:grid-cols-[minmax(280px,0.72fr)_minmax(0,1fr)] lg:items-start">
+                                <div class="flex flex-col items-center gap-4 rounded-[28px] bg-[linear-gradient(180deg,#fff7ed,#ffffff)] p-6 shadow-inner shadow-amber-100/60 dark:bg-transparent dark:shadow-none">
+                                    <p class="text-sm font-semibold text-gray-700 dark:text-gray-400">
+                                        Escaneie com seu app de banco
+                                    </p>
+                                    @if($pixQrCode)
+                                        <div class="rounded-[28px] border-4 border-amber-300 bg-white p-3 shadow-xl shadow-amber-100/60 dark:border-amber-400 dark:shadow-amber-900/20">
+                                            <img
+                                                src="data:image/png;base64,{{ $pixQrCode }}"
+                                                alt="QR Code PIX"
+                                                class="h-52 w-52"
+                                            >
+                                        </div>
+                                    @endif
+                                    <div class="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-white/80 px-3 py-1.5 text-xs text-gray-500 dark:border-white/10 dark:bg-white/5 dark:text-gray-400">
+                                        <x-heroicon-o-arrow-path class="h-3 w-3 animate-spin opacity-60" />
+                                        <span wire:poll.5000ms>Aguardando confirmação...</span>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-4">
+                                    <div class="rounded-[28px] border border-gray-200 bg-white/90 p-5 shadow-lg shadow-gray-200/60 dark:border-white/10 dark:bg-white/5">
+                                        <label class="mb-3 block text-[11px] font-bold uppercase tracking-[0.2em] text-gray-700 dark:text-gray-400">
+                                            Pix Copia e Cola
+                                        </label>
+                                        <textarea
+                                            readonly
+                                            rows="5"
+                                            onclick="this.select()"
+                                            class="w-full rounded-2xl border border-gray-300 bg-gray-50 px-4 py-3 text-xs text-gray-800 shadow-inner shadow-gray-200/40 resize-none font-mono dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300"
+                                        >{{ $pixCopyPaste }}</textarea>
+
+                                        <button
+                                            wire:click="markCopied"
+                                            onclick="navigator.clipboard.writeText('{{ $pixCopyPaste }}').then(() => {})"
+                                            class="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition-all
+                                                {{ $copied
+                                                    ? 'border border-green-300 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                                    : 'bg-amber-500 text-white shadow-md hover:bg-amber-600 hover:shadow-lg' }}"
+                                        >
+                                            @if($copied)
+                                                <x-heroicon-o-check class="h-4 w-4" />
+                                                Copiado!
+                                            @else
+                                                <x-heroicon-o-clipboard-document class="h-4 w-4" />
+                                                Copiar código PIX
+                                            @endif
+                                        </button>
+                                    </div>
+
+                                    <div class="rounded-[28px] border border-blue-200 bg-blue-50 p-5 dark:border-blue-800 dark:bg-blue-900/20">
+                                        <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-700 dark:text-blue-400">Como pagar</p>
+                                        <ol class="mt-4 space-y-3 text-sm text-blue-700 dark:text-blue-300">
+                                            <li class="flex gap-3">
+                                                <span class="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">1</span>
+                                                Abra seu app do banco.
+                                            </li>
+                                            <li class="flex gap-3">
+                                                <span class="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">2</span>
+                                                Escaneie o QR Code ou cole o código.
+                                            </li>
+                                            <li class="flex gap-3">
+                                                <span class="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">3</span>
+                                                Confirme <strong>R$ {{ number_format((float) $selectedPlan?->price, 2, ',', '.') }}</strong> do plano {{ $selectedPlan?->billing_cycle_label }}.
+                                            </li>
+                                        </ol>
+                                        <p class="mt-4 text-sm font-semibold text-blue-700 dark:text-blue-300">
+                                            Ativação automática após confirmação.
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         @endif
-                        <div class="flex items-center gap-2 text-xs text-gray-400">
-                            <x-heroicon-o-arrow-path class="w-3 h-3 animate-spin opacity-60" />
-                            <span wire:poll.5000ms>Aguardando confirmação...</span>
-                        </div>
                     </div>
-
-                    {{-- Pix Copia e Cola + instruções --}}
-                    <div class="flex flex-col gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-2 uppercase tracking-wider">
-                                Pix Copia e Cola
-                            </label>
-                            <div class="relative">
-                                <textarea
-                                    readonly
-                                    rows="4"
-                                    onclick="this.select()"
-                                    class="w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-xs text-gray-700 dark:text-gray-300 p-3 resize-none font-mono"
-                                >{{ $pixCopyPaste }}</textarea>
-                            </div>
-                        </div>
-
-                        <button
-                            wire:click="markCopied"
-                            onclick="navigator.clipboard.writeText('{{ $pixCopyPaste }}').then(() => {})"
-                            class="w-full flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition-all
-                                {{ $copied
-                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-300'
-                                    : 'bg-amber-500 hover:bg-amber-600 text-white shadow-md hover:shadow-lg' }}"
-                        >
-                            @if($copied)
-                                <x-heroicon-o-check class="w-4 h-4" />
-                                Copiado!
-                            @else
-                                <x-heroicon-o-clipboard-document class="w-4 h-4" />
-                                Copiar código PIX
-                            @endif
-                        </button>
-
-                        <div class="rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 p-4 space-y-2">
-                            <p class="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider">Como pagar</p>
-                            <ol class="text-xs text-blue-600 dark:text-blue-300 space-y-1 list-decimal list-inside">
-                                <li>Abra seu app do banco</li>
-                                <li>Acesse a área <strong>PIX</strong></li>
-                                <li>Cole o código ou escaneie o QR Code</li>
-                                <li>Confirme o pagamento de <strong>R$ {{ number_format((float) $selectedPlan?->price, 2, ',', '.') }}</strong></li>
-                            </ol>
-                            <p class="text-xs text-blue-500 dark:text-blue-400 pt-1">
-                                ✅ A ativação é automática após o pagamento.
-                            </p>
-                        </div>
-                    </div>
-
-                </div>
+                </section>
             </div>
-        </div>
-    @endif
-
-    {{-- ====== PLANOS ====== --}}
-    @if(!$paymentId)
-        <div>
-            <div class="text-center mb-8">
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Escolha seu plano</h1>
-                <p class="text-gray-500 dark:text-gray-400 mt-1">Sem taxas escondidas. Cancele quando quiser.</p>
-            </div>
-
-            <div class="grid md:grid-cols-3 gap-6">
+        @else
+            <div class="grid gap-6 xl:grid-cols-3">
                 @foreach($this->plans as $plan)
                     @php
                         $isCurrentPlan = $isActive && $barbershop->subscription_plan === $plan->name;
+                        $referenceTotal = $monthlyReferencePlan ? (float) $monthlyReferencePlan->price * max(1, $plan->billing_cycle_months) : null;
+                        $savingsAmount = $referenceTotal && $plan->billing_cycle_months > 1 ? max(0, $referenceTotal - (float) $plan->price) : 0;
+                        $savingsPercent = $referenceTotal && $savingsAmount > 0 ? round(($savingsAmount / $referenceTotal) * 100) : 0;
+                        $displayName = $plan->name === 'Basico' ? 'Básico' : $plan->name;
                     @endphp
-                    <div
-                        class="relative rounded-2xl border-2 {{ $plan->is_popular ? 'border-amber-400 dark:border-amber-500 shadow-xl shadow-amber-100 dark:shadow-amber-900/20' : 'border-gray-200 dark:border-gray-700' }}
-                               bg-white dark:bg-gray-800 p-6 flex flex-col"
-                    >
-                        {{-- Badge Mais Popular --}}
-                        @if($plan->is_popular)
-                            <div class="absolute -top-3 left-1/2 -translate-x-1/2">
-                                <span class="bg-amber-500 text-white text-xs font-bold px-4 py-1 rounded-full shadow">
-                                    ⭐ Mais popular
-                                </span>
-                            </div>
-                        @endif
+                    <div class="group relative flex flex-col overflow-hidden rounded-[30px] border {{ $plan->is_popular ? 'border-amber-300/90 bg-[linear-gradient(180deg,rgba(255,251,235,0.96),rgba(255,255,255,0.98))] shadow-[0_22px_60px_-32px_rgba(217,119,6,0.32)] dark:border-amber-500/30 dark:bg-[linear-gradient(180deg,rgba(245,158,11,0.08),rgba(255,255,255,0.02))]' : 'border-gray-200/80 bg-white/95 shadow-[0_18px_50px_-34px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-gray-950/75' }} p-6 sm:p-7">
+                        <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(245,158,11,0.12),_transparent_35%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
 
-                        {{-- Cabeçalho do plano --}}
-                        <div class="mb-4">
-                            <h3 class="text-lg font-bold text-gray-900 dark:text-white">{{ $plan->name }}</h3>
-                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ $plan->description }}</p>
+                        <div class="relative mb-8">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-500">Plano {{ $plan->billing_cycle_label }}</p>
+                                    <h3 class="mt-3 text-2xl font-black tracking-[-0.03em] text-gray-900 dark:text-white">{{ $displayName }}</h3>
+                                    <p class="mt-4 max-w-xs text-sm leading-7 text-gray-600 dark:text-gray-300 line-clamp-3">{{ $plan->description }}</p>
+                                </div>
+                                @if($plan->is_popular)
+                                    <span class="inline-flex shrink-0 items-center rounded-full border border-amber-300 bg-amber-100 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+                                        Mais popular
+                                    </span>
+                                @endif
+                            </div>
+                            <p class="mt-6 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">
+                                {{ $plan->billing_cycle_description }}
+                            </p>
                         </div>
 
-                        {{-- Preço --}}
-                        <div class="mb-6">
-                            <div class="flex items-end gap-1">
-                                <span class="text-3xl font-extrabold text-gray-900 dark:text-white">
+                        <div class="relative mb-8 rounded-[24px] border border-gray-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,250,252,0.92))] p-6 dark:border-white/10 dark:bg-white/5">
+                            <div class="flex items-end gap-2">
+                                <span class="text-4xl font-black leading-none tracking-tight text-gray-900 dark:text-white">
                                     R$ {{ number_format((float) $plan->price, 2, ',', '.') }}
                                 </span>
-                                <span class="text-sm text-gray-400 dark:text-gray-500 mb-1">/mês</span>
+                                <span class="mb-1 text-sm font-medium text-gray-600 dark:text-gray-500">/{{ $plan->billing_cycle_label }}</span>
                             </div>
-                            @if($plan->price <= 1)
-                                <span class="text-xs text-amber-600 dark:text-amber-400 font-semibold">
-                                    ✦ Preço de lançamento especial
+                            @if($plan->billing_cycle_months > 1)
+                                <div class="mt-5 rounded-2xl border border-green-200 bg-green-50/85 px-4 py-3 dark:border-green-500/20 dark:bg-green-500/10">
+                                    <p class="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                        Equivale a <span class="font-bold text-gray-900 dark:text-white">R$ {{ number_format((float) $plan->monthly_equivalent, 2, ',', '.') }}/mês</span>
+                                    </p>
+                                    <p class="mt-1 text-sm font-bold text-green-700 dark:text-green-400">
+                                        Economize {{ $savingsPercent }}% e preserve R$ {{ number_format((float) $savingsAmount, 2, ',', '.') }} no ciclo
+                                    </p>
+                                </div>
+                            @else
+                                <span class="mt-5 inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
+                                    Flexibilidade total para pagar mês a mês
                                 </span>
                             @endif
                         </div>
 
-                        {{-- Features --}}
-                        <ul class="flex-1 space-y-2 mb-6">
+                        <ul class="relative mb-10 flex-1 space-y-4">
                             @foreach((array) $plan->features as $feature)
-                                <li class="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300">
-                                    <x-heroicon-o-check-circle class="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                                <li class="flex items-start gap-3 text-sm leading-6 text-gray-700 dark:text-gray-300">
+                                    <span class="mt-0.5 inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400">
+                                        <x-heroicon-o-check class="h-3.5 w-3.5" />
+                                    </span>
                                     {{ $feature }}
                                 </li>
                             @endforeach
                         </ul>
 
-                        {{-- Botão de ação --}}
                         @if($isCurrentPlan)
-                            <div class="w-full text-center rounded-xl border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 py-2.5 text-sm font-semibold text-green-700 dark:text-green-400">
-                                ✅ Plano atual
+                            <div class="w-full rounded-2xl border border-green-300 bg-green-50 px-4 py-4 text-center text-sm font-semibold text-green-700 dark:border-green-700 dark:bg-green-900/20 dark:text-green-400">
+                                Plano atual
                             </div>
                         @else
-                            <button
-                                wire:click="selectPlan({{ $plan->id }})"
-                                wire:loading.attr="disabled"
-                                wire:target="selectPlan({{ $plan->id }})"
-                                class="w-full rounded-xl px-4 py-3 text-sm font-semibold transition-all
-                                    {{ $plan->is_popular
-                                        ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-md hover:shadow-lg disabled:opacity-60'
-                                        : 'bg-gray-900 hover:bg-gray-700 dark:bg-white dark:hover:bg-gray-200 text-white dark:text-gray-900 disabled:opacity-60' }}"
-                            >
-                                <span wire:loading.remove wire:target="selectPlan({{ $plan->id }})">
-                                    Assinar agora — R$ {{ number_format((float) $plan->price, 2, ',', '.') }}
-                                </span>
-                                <span wire:loading wire:target="selectPlan({{ $plan->id }})" class="flex items-center justify-center gap-2">
-                                    <x-heroicon-o-arrow-path class="w-4 h-4 animate-spin" />
-                                    Gerando PIX...
-                                </span>
-                            </button>
+                            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                                <button
+                                    wire:click="checkoutWithCard({{ $plan->id }})"
+                                    wire:loading.attr="disabled"
+                                    wire:target="checkoutWithCard({{ $plan->id }})"
+                                    class="w-full rounded-2xl px-5 py-4 text-sm font-semibold leading-6 transition-all
+                                        {{ $plan->is_popular
+                                            ? 'bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-60'
+                                            : 'bg-gray-950 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-950 disabled:opacity-60' }}"
+                                >
+                                    <span wire:loading.remove wire:target="checkoutWithCard({{ $plan->id }})">
+                                        Pagar com cartão
+                                    </span>
+                                    <span wire:loading wire:target="checkoutWithCard({{ $plan->id }})" class="flex items-center justify-center gap-2">
+                                        <x-heroicon-o-arrow-path class="h-4 w-4 animate-spin" />
+                                        Abrindo checkout...
+                                    </span>
+                                </button>
+
+                                <button
+                                    wire:click="selectPlan({{ $plan->id }})"
+                                    wire:loading.attr="disabled"
+                                    wire:target="selectPlan({{ $plan->id }})"
+                                    class="w-full rounded-2xl border border-gray-200 bg-white px-5 py-4 text-sm font-semibold text-gray-700 transition-all hover:border-amber-300 hover:text-amber-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:border-amber-500/40 dark:hover:text-amber-300"
+                                >
+                                    <span wire:loading.remove wire:target="selectPlan({{ $plan->id }})">
+                                        Gerar PIX
+                                    </span>
+                                    <span wire:loading wire:target="selectPlan({{ $plan->id }})" class="flex items-center justify-center gap-2">
+                                        <x-heroicon-o-arrow-path class="h-4 w-4 animate-spin" />
+                                        Gerando PIX...
+                                    </span>
+                                </button>
+                            </div>
                         @endif
                     </div>
                 @endforeach
             </div>
 
-            {{-- Garantia / segurança --}}
-            <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-6 text-sm text-gray-500 dark:text-gray-400">
-                <div class="flex items-center gap-2">
-                    <x-heroicon-o-lock-closed class="w-4 h-4 text-gray-400" />
+            <div class="flex flex-col items-stretch justify-center gap-3 text-sm text-gray-500 dark:text-gray-400 sm:flex-row sm:items-center">
+                <div class="flex items-center justify-center gap-2 rounded-full border border-gray-200/80 bg-white/90 px-4 py-2 dark:border-white/10 dark:bg-white/5">
+                    <x-heroicon-o-lock-closed class="h-4 w-4 text-gray-400" />
                     Pagamento seguro via PIX
                 </div>
-                <div class="flex items-center gap-2">
-                    <x-heroicon-o-shield-check class="w-4 h-4 text-gray-400" />
+                <div class="flex items-center justify-center gap-2 rounded-full border border-gray-200/80 bg-white/90 px-4 py-2 dark:border-white/10 dark:bg-white/5">
+                    <x-heroicon-o-shield-check class="h-4 w-4 text-gray-400" />
                     Ativação automática
                 </div>
-                <div class="flex items-center gap-2">
-                    <x-heroicon-o-arrow-uturn-left class="w-4 h-4 text-gray-400" />
+                <div class="flex items-center justify-center gap-2 rounded-full border border-gray-200/80 bg-white/90 px-4 py-2 dark:border-white/10 dark:bg-white/5">
+                    <x-heroicon-o-arrow-uturn-left class="h-4 w-4 text-gray-400" />
                     Cancele quando quiser
                 </div>
             </div>
-        </div>
-    @endif
-
+        @endif
+    </div>
 </x-filament-panels::page>

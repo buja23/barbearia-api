@@ -61,6 +61,7 @@ class BarbershopResource extends Resource
 
                         FileUpload::make('logo_path')
                             ->image()
+                            ->disk('public')
                             ->directory('barbershops-logos')
                             ->label('Logo da Barbearia'),
 
@@ -148,6 +149,28 @@ class BarbershopResource extends Resource
                             ->addActionLabel('Adicionar dia extra')
                             ->defaultItems(0),
                     ]),
+
+                Section::make('Recebimento via PIX')
+                    ->description('Configure sua chave PIX para receber pagamentos dos clientes diretamente na sua conta.')
+                    ->icon('heroicon-o-banknotes')
+                    ->schema([
+                        Select::make('pix_key_type')
+                            ->label('Tipo de Chave')
+                            ->options([
+                                'cpf'    => 'CPF',
+                                'cnpj'   => 'CNPJ',
+                                'email'  => 'E-mail',
+                                'phone'  => 'Telefone',
+                                'random' => 'Chave Aleatória',
+                            ])
+                            ->live()
+                            ->placeholder('Selecione o tipo'),
+
+                        TextInput::make('pix_key')
+                            ->label('Chave PIX')
+                            ->placeholder('CPF, CNPJ, e-mail, telefone ou chave aleatória')
+                            ->helperText('Esta chave será usada para gerar o QR Code PIX nos agendamentos.'),
+                    ])->columns(2),
             ]);
     }
 
@@ -155,7 +178,7 @@ class BarbershopResource extends Resource
     {
        return $table
             ->columns([
-                ImageColumn::make('logo_path')->label('Logo')->circular(),
+                ImageColumn::make('logo_path')->disk('public')->label('Logo')->circular(),
                 TextColumn::make('name')->label('Barbearia')->searchable()->sortable(),
                 TextColumn::make('slug')
                     ->label('Link')
@@ -210,12 +233,23 @@ class BarbershopResource extends Resource
     }
 
     /**
-     * O BarbershopResource gerencia o próprio tenant, então o Filament
-     * já limita automaticamente ao tenant ativo. Não precisamos de scoping manual.
-     * Admin vê todos os tenants pois getTenants() retorna Barbershop::all().
+     * Barbershop é o próprio tenant — não possui relação "barbershop" consigo mesmo.
+     * Desabilita o tenant scoping automático do Filament neste resource.
      */
+    public static function isScopedToTenant(): bool
+    {
+        return false;
+    }
+
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery();
+        // Admin vê todas; barber vê apenas a sua própria
+        $user = auth()->user();
+
+        if ($user?->isAdmin()) {
+            return Barbershop::query();
+        }
+
+        return Barbershop::query()->where('user_id', $user?->id);
     }
 }

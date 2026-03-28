@@ -45,16 +45,25 @@ class SubscriptionController extends Controller
             ], 422);
         }
 
-        $plan = Plan::where('id', $request->plan_id)
+        // Busca o plano pelo ID — a validação do Request já garante que
+        // o plano existe, está ativo e pertence à barbearia informada.
+        $plan = Plan::with('barbershop')
+            ->where('id', $request->plan_id)
             ->where('is_active', true)
             ->firstOrFail();
 
         return DB::transaction(function () use ($user, $plan) {
             $isFree = (float) $plan->price === 0.0;
 
+            // Vincula o cliente à barbearia caso ainda não esteja vinculado
+            if (! $user->barbershop_id) {
+                $user->update(['barbershop_id' => $plan->barbershop_id]);
+            }
+
             $subscription = Subscription::create([
                 'user_id'          => $user->id,
                 'plan_id'          => $plan->id,
+                'barbershop_id'    => $plan->barbershop_id,
                 'starts_at'        => now(),
                 'expires_at'       => now()->addMonth(),
                 'status'           => $isFree ? 'active' : 'pending',
@@ -97,7 +106,7 @@ class SubscriptionController extends Controller
             return response()->json(['message' => 'Nenhuma assinatura ativa para cancelar.'], 404);
         }
 
-        $subscription->update(['status' => 'cancelled']);
+        $subscription->update(['status' => 'canceled']);
 
         return response()->json(['message' => 'Assinatura cancelada com sucesso.']);
     }

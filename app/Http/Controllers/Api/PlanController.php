@@ -21,7 +21,9 @@ class PlanController extends Controller
         }
 
         return response()->json(
-            Plan::where('is_active', true)->get()
+            Plan::where('barbershop_id', $barbershop->id)
+                ->where('is_active', true)
+                ->get()
         );
     }
 }

@@ -13,7 +13,6 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Tables\Columns\TextColumn;
@@ -30,11 +29,6 @@ class ServiceResource extends Resource {
     public static function form( Form $form ): Form {
         return $form
         ->schema( [
-            Select::make( 'barbershop_id' )
-            ->relationship( 'barbershop', 'name' )
-            ->required()
-            ->label( 'Pertence à Barbearia' ),
-
             TextInput::make( 'name' )
             ->required()
             ->label( 'Nome do Serviço (ex: Corte)' ),
@@ -89,6 +83,11 @@ class ServiceResource extends Resource {
         ] );
     }
 
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->with(['barbershop']);
+    }
 
     public static function getRelations(): array {
         return [

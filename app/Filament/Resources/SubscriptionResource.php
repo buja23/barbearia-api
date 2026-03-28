@@ -17,7 +17,10 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Carbon\Carbon;
+use Filament\Facades\Filament;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Database\Eloquent\Builder;
+use App\Models\Subscription as SubscriptionModel;
 
 class SubscriptionResource extends Resource
 {
@@ -27,6 +30,7 @@ class SubscriptionResource extends Resource
     protected static ?string $navigationLabel = 'Assinaturas';
     protected static ?string $modelLabel = 'Assinatura';
     protected static ?string $pluralModelLabel = 'Assinaturas';
+    protected static ?string $tenantOwnershipRelationshipName = 'barbershop';
 
     public static function form(Form $form): Form
     {
@@ -39,17 +43,61 @@ class SubscriptionResource extends Resource
                             ->schema([
                                 Forms\Components\Select::make('user_id')
                                     ->label('Cliente')
-                                    ->options(User::where('role', 'client')->pluck('name', 'id'))
+                                    ->options(function () {
+                                        $tenant = Filament::getTenant();
+
+                                        return User::query()
+                                            ->where('role', 'client')
+                                            ->when($tenant, fn (Builder $query) => $query->where('barbershop_id', $tenant->id))
+                                            ->orderBy('name')
+                                            ->pluck('name', 'id');
+                                    })
                                     ->searchable()
-                                    ->required(),
+                                    ->required()
+                                    ->rule(function () {
+                                        $tenant = Filament::getTenant();
+
+                                        return function (string $attribute, $value, \Closure $fail) use ($tenant): void {
+                                            if (! $tenant) {
+                                                return;
+                                            }
+
+                                            $belongsToTenant = User::query()
+                                                ->whereKey($value)
+                                                ->where('role', 'client')
+                                                ->where('barbershop_id', $tenant->id)
+                                                ->exists();
+
+                                            if (! $belongsToTenant) {
+                                                $fail('Selecione um cliente da barbearia atual.');
+                                            }
+                                        };
+                                    }),
 
                                 Forms\Components\Select::make('plan_id')
                                     ->label('Plano Selecionado')
-                                    ->relationship('plan', 'name')
+                                    ->relationship(
+                                        'plan',
+                                        'name',
+                                        modifyQueryUsing: fn (Builder $query) => $query
+                                            ->when(
+                                                Filament::getTenant(),
+                                                fn (Builder $tenantQuery, $tenant) => $tenantQuery->where('barbershop_id', $tenant->id)
+                                            )
+                                            ->where('is_active', true)
+                                    )
                                     ->required()
                                     ->live()
                                     ->afterStateUpdated(fn ($state, Forms\Set $set) => 
-                                        $set('remaining_cuts', Plan::find($state)?->cuts_per_month ?? 0)),
+                                        $set(
+                                            'remaining_cuts',
+                                            Plan::query()
+                                                ->when(
+                                                    Filament::getTenant(),
+                                                    fn (Builder $query, $tenant) => $query->where('barbershop_id', $tenant->id)
+                                                )
+                                                ->find($state)?->cuts_per_month ?? 0
+                                        )),
                             ]),
 
                         Grid::make(3)
@@ -138,10 +186,21 @@ class SubscriptionResource extends Resource
                 
                 SelectFilter::make('plan_id')
                     ->label('Filtrar por Plano')
-                    ->relationship('plan', 'name'),
+                    ->relationship(
+                        'plan',
+                        'name',
+                        modifyQueryUsing: fn (Builder $query) => $query->when(
+                            Filament::getTenant(),
+                            fn (Builder $tenantQuery, $tenant) => $tenantQuery->where('barbershop_id', $tenant->id)
+                        )
+                    ),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()
+                    ->url(fn (SubscriptionModel $record): string => static::getUrl('edit', [
+                        'record' => $record,
+                        'tenant' => Filament::getTenant()?->slug,
+                    ])),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -153,6 +212,47 @@ class SubscriptionResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->with(['user', 'plan']);
+    }
+
+    public static function assertUserBelongsToCurrentTenant(?int $userId): void
+    {
+        $tenant = Filament::getTenant();
+
+        if (! $tenant || ! $userId) {
+            return;
+        }
+
+        $belongsToTenant = User::query()
+            ->whereKey($userId)
+            ->where('role', 'client')
+            ->where('barbershop_id', $tenant->id)
+            ->exists();
+
+        if (! $belongsToTenant) {
+            throw ValidationException::withMessages([
+                'data.user_id' => 'Selecione um cliente da barbearia atual.',
+            ]);
+        }
+    }
+
+    public static function assertPlanBelongsToCurrentTenant(?int $planId): void
+    {
+        $tenant = Filament::getTenant();
+
+        if (! $tenant || ! $planId) {
+            return;
+        }
+
+        $belongsToTenant = Plan::query()
+            ->whereKey($planId)
+            ->where('barbershop_id', $tenant->id)
+            ->exists();
+
+        if (! $belongsToTenant) {
+            throw ValidationException::withMessages([
+                'data.plan_id' => 'Selecione um plano da barbearia atual.',
+            ]);
+        }
     }
 
     public static function getPages(): array

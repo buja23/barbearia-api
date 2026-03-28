@@ -54,16 +54,29 @@ class RegisterBarbershop extends RegisterTenant
      */
     protected function handleRegistration(array $data): Barbershop
     {
+        $user = auth()->user();
+        $userTrialEndsAt = $user->trial_ends_at;
+
+        if (! $userTrialEndsAt) {
+            $userTrialEndsAt = now()->addDays(14);
+
+            $user->update([
+                'trial_ends_at' => $userTrialEndsAt,
+            ]);
+        }
+
+        $hasActiveSharedTrial = $userTrialEndsAt->isFuture();
+
         $barbershop = Barbershop::create([
             ...$data,
             'user_id'                  => auth()->id(),
-            'subscription_status'      => 'trial',
-            'trial_ends_at'            => now()->addDays(14),
+            'subscription_status'      => $hasActiveSharedTrial ? 'trial' : 'expired',
+            'trial_ends_at'            => $userTrialEndsAt,
             'subscription_expires_at'  => null,
         ]);
 
         // Define automaticamente o role para 'barber' ao criar uma barbearia
-        auth()->user()->update([
+        $user->update([
             'role'          => 'barber',
             'barbershop_id' => $barbershop->id,
         ]);
