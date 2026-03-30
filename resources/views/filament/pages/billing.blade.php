@@ -14,259 +14,642 @@
         if ($isActive && $barbershop->subscription_status === 'cancelled') {
             $displayPlanName = $barbershop->subscription_plan === 'Basico' ? 'Básico' : $barbershop->subscription_plan;
             $statusLabel = 'Cancelamento agendado';
-            $statusTitle = "Plano {$displayPlanName} • Expira em {$barbershop->subscription_expires_at?->format('d/m/Y')}";
-            $statusBody  = 'Acesso mantido até o vencimento. Reative antes da data para não perder o histórico.';
+            $statusTitle = 'Plano ' . $displayPlanName . ' · acesso até ' . $barbershop->subscription_expires_at?->format('d/m/Y');
+            $statusBody  = 'Sua assinatura foi cancelada. Você ainda tem acesso completo até a data acima. Assine novamente antes do vencimento para não interromper o serviço.';
             $statusIcon  = 'heroicon-o-clock';
-            $statusTone  = 'border-orange-500/20 bg-orange-50/50 text-orange-700 dark:bg-orange-500/10 dark:text-orange-400';
+            $statusTone  = 'border-orange-200/80 bg-orange-50/85 text-orange-700 dark:border-orange-800/80 dark:bg-orange-900/20 dark:text-orange-300';
         } elseif ($isActive) {
             $displayPlanName = $barbershop->subscription_plan === 'Basico' ? 'Básico' : $barbershop->subscription_plan;
             $statusLabel = 'Assinatura ativa';
-            $statusTitle = "Plano {$displayPlanName} em operação";
-            $statusBody = "Renovação automática em {$barbershop->subscription_expires_at?->format('d/m/Y')}.";
+            $statusTitle = 'Plano ' . $displayPlanName . ' em operação';
+            $statusBody = 'Sua assinatura vence em ' . $barbershop->subscription_expires_at?->format('d/m/Y') . '.';
             $statusIcon = 'heroicon-o-check-badge';
-            $statusTone = 'border-emerald-500/20 bg-emerald-50/50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400';
+            $statusTone = 'border-emerald-200/80 bg-emerald-50/85 text-emerald-700 dark:border-emerald-800/80 dark:bg-emerald-900/20 dark:text-emerald-300';
         } elseif ($onTrial) {
             $statusLabel = 'Período de teste';
-            $statusTitle = "{$trialDays} " . Str::plural('dia', $trialDays) . " de cortesia restante" . ($trialDays !== 1 ? 's' : '');
-            $statusBody = 'Aproveite todos os recursos. Assine para garantir a continuidade após o teste.';
-            $statusIcon = 'heroicon-o-sparkles';
-            $statusTone = 'border-sky-500/20 bg-sky-50/50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300';
+            $statusTitle = $trialDays . ' ' . Str::plural('dia', $trialDays) . ' restante' . ($trialDays !== 1 ? 's' : '') . ' para escolher seu plano';
+            $statusBody = 'Assine agora para manter o acesso sem interrupção quando o teste terminar.';
+            $statusIcon = 'heroicon-o-clock';
+            $statusTone = 'border-amber-200/80 bg-amber-50/85 text-amber-700 dark:border-amber-700/80 dark:bg-amber-900/20 dark:text-amber-300';
         } else {
             $statusLabel = 'Acesso suspenso';
-            $statusTitle = 'O teste encerrou';
-            $statusBody = 'Escolha um dos planos abaixo para reativar sua agenda e voltar a faturar.';
+            $statusTitle = 'Seu período de teste encerrou';
+            $statusBody = 'Escolha um plano abaixo para reativar sua barbearia e voltar a operar normalmente.';
             $statusIcon = 'heroicon-o-exclamation-circle';
-            $statusTone = 'border-rose-500/20 bg-rose-50/50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400';
+            $statusTone = 'border-rose-200/80 bg-rose-50/85 text-rose-700 dark:border-rose-800/80 dark:bg-rose-900/20 dark:text-rose-300';
+        }
+
+        // Pill colors for the always-dark hero
+        if ($isActive && $barbershop->subscription_status === 'cancelled') {
+            $heroPillColor = 'border-orange-500/35 bg-orange-500/10 text-orange-300';
+        } elseif ($isActive) {
+            $heroPillColor = 'border-emerald-500/35 bg-emerald-500/10 text-emerald-300';
+        } elseif ($onTrial) {
+            $heroPillColor = 'border-amber-500/35 bg-amber-500/10 text-amber-300';
+        } else {
+            $heroPillColor = 'border-rose-500/35 bg-rose-500/10 text-rose-300';
         }
     @endphp
 
-    <div class="mx-auto max-w-7xl space-y-8 animate-in fade-in duration-700">
-        {{-- ── Header & Status ─────────────────────────────────── --}}
-        <header class="relative overflow-hidden rounded-3xl border border-gray-200 bg-white p-8 shadow-sm dark:border-white/10 dark:bg-gray-900 md:p-12">
-            <div class="relative z-10 flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
-                <div class="space-y-6">
-                    <div class="inline-flex items-center gap-3 rounded-full border px-4 py-1.5 text-xs font-bold uppercase tracking-widest {{ $statusTone }}">
-                        <x-dynamic-component :component="$statusIcon" class="h-4 w-4" />
+    <div class="mx-auto max-w-7xl space-y-10">
+        <section class="relative overflow-hidden rounded-[32px] bg-gray-950 shadow-[0_32px_80px_-24px_rgba(0,0,0,0.6)]">
+            {{-- Aura amber top-right + soft bottom-left --}}
+            <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_105%_-10%,rgba(245,158,11,0.22),transparent_58%),radial-gradient(ellipse_50%_55%_at_-5%_110%,rgba(245,158,11,0.07),transparent_55%)]"></div>
+            {{-- Subtle dot grid texture --}}
+            <div class="pointer-events-none absolute inset-0" style="background-image:radial-gradient(circle,rgba(255,255,255,0.045) 1px,transparent 1px);background-size:26px 26px;"></div>
+
+            <div class="relative flex flex-col gap-10 px-8 py-12 sm:px-12 sm:py-16 lg:flex-row lg:items-end lg:justify-between">
+                <div class="max-w-2xl">
+                    {{-- Status pill --}}
+                    <div class="inline-flex items-center gap-2.5 rounded-full border px-4 py-2 text-[11px] font-bold uppercase tracking-[0.2em] {{ $heroPillColor }}">
+                        <x-dynamic-component :component="$statusIcon" class="h-3.5 w-3.5" />
                         {{ $statusLabel }}
                     </div>
-                    
-                    <div class="max-w-2xl">
-                        <h1 class="text-4xl font-black tracking-tight text-gray-950 dark:text-white sm:text-6xl">
-                            {{ $isActive ? 'Sua assinatura.' : 'Evolua sua barbearia.' }}
-                        </h1>
-                        <p class="mt-4 text-lg leading-relaxed text-gray-500 dark:text-gray-400">
-                            {{ $statusBody }} Gerencie seus pagamentos e escolha o plano ideal para o seu crescimento.
-                        </p>
-                    </div>
+
+                    <h1 class="mt-6 max-w-3xl text-4xl font-black tracking-[-0.04em] text-white sm:text-5xl xl:text-6xl">
+                        {{ $isActive ? 'Gerencie seu plano.' : 'Escolha seu plano.' }}
+                    </h1>
+                    <p class="mt-5 max-w-xl text-base leading-7 text-white/50 sm:text-lg">
+                        {{ $statusBody }}
+                    </p>
                 </div>
 
-                @if($isActive && $barbershop->subscription_status !== 'cancelled')
-                    <div class="flex flex-col items-start gap-4 rounded-2xl border border-gray-100 bg-gray-50/50 p-6 dark:border-white/5 dark:bg-white/5">
-                        <p class="text-xs font-bold uppercase tracking-widest text-gray-400">Próximo vencimento</p>
-                        <p class="text-2xl font-black text-gray-950 dark:text-white">{{ $barbershop->subscription_expires_at?->format('d/m/Y') }}</p>
-                        <button wire:click="confirmCancel" class="text-xs font-bold text-rose-600 underline-offset-4 hover:underline">Cancelar renovação automática</button>
+                {{-- Trust signals --}}
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-4 py-2.5 text-[11px] font-semibold text-white/50 backdrop-blur-sm">
+                        <x-heroicon-o-lock-closed class="h-3.5 w-3.5" />
+                        Pagamento seguro
                     </div>
-                @endif
-            </div>
-            
-            {{-- Detalhe visual de fundo --}}
-            <div class="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-amber-500/5 blur-3xl"></div>
-        </header>
-
-        {{-- ── Confirmação de Cancelamento ────────────────────── --}}
-        @if($showCancelConfirm)
-            <div class="rounded-3xl border border-rose-200 bg-rose-50/50 p-8 dark:border-rose-500/20 dark:bg-rose-500/5">
-                <div class="flex flex-col gap-6 md:flex-row md:items-center">
-                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-rose-100 text-rose-600">
-                        <x-heroicon-o-exclamation-triangle class="h-6 w-6" />
+                    <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-4 py-2.5 text-[11px] font-semibold text-white/50 backdrop-blur-sm">
+                        <x-heroicon-o-shield-check class="h-3.5 w-3.5" />
+                        Cancele quando quiser
                     </div>
-                    <div class="flex-1">
-                        <h3 class="text-lg font-bold text-gray-950 dark:text-white">Deseja realmente cancelar?</h3>
-                        <p class="text-sm text-gray-600 dark:text-gray-400">Seu acesso continuará ativo até o fim do ciclo atual. Depois disso, seus dados serão preservados, mas a agenda ficará bloqueada.</p>
-                    </div>
-                    <div class="flex gap-3">
-                        <button wire:click="cancelSubscription" class="rounded-xl bg-rose-600 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-rose-700">Confirmar</button>
-                        <button wire:click="dismissCancel" class="rounded-xl border border-gray-200 bg-white px-6 py-3 text-sm font-bold text-gray-700 shadow-sm transition hover:bg-gray-50">Manter plano</button>
+                    <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-4 py-2.5 text-[11px] font-semibold text-white/50 backdrop-blur-sm">
+                        <x-heroicon-o-bolt class="h-3.5 w-3.5" />
+                        Ativação imediata
                     </div>
                 </div>
             </div>
+        </section>
+
+        {{-- ── Gerenciamento de assinatura ─────────────────────────────────── --}}
+        @if($isActive)
+            @if($showCancelConfirm)
+                <section class="overflow-hidden rounded-[30px] border border-rose-200/80 bg-rose-50/80 px-6 py-8 dark:border-rose-500/20 dark:bg-rose-500/5 sm:px-8">
+                    <div class="flex flex-col gap-5 sm:flex-row sm:items-start">
+                        <span class="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-rose-100 dark:bg-rose-500/15">
+                            <x-heroicon-o-exclamation-triangle class="h-5 w-5 text-rose-600 dark:text-rose-400" />
+                        </span>
+                        <div class="flex-1">
+                            <h3 class="text-base font-black text-gray-900 dark:text-white">Cancelar assinatura?</h3>
+                            <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                                Ao cancelar, você <strong>mantém o acesso completo até {{ $barbershop->subscription_expires_at?->format('d/m/Y') }}</strong>.
+                                Após essa data, o acesso será suspenso e será necessário assinar novamente.
+                            </p>
+                            <div class="mt-5 flex flex-col gap-3 sm:flex-row">
+                                <button
+                                    wire:click="cancelSubscription"
+                                    wire:loading.attr="disabled"
+                                    wire:target="cancelSubscription"
+                                    class="inline-flex items-center justify-center rounded-2xl bg-rose-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-60"
+                                >
+                                    <span wire:loading.remove wire:target="cancelSubscription">Confirmar cancelamento</span>
+                                    <span wire:loading wire:target="cancelSubscription" class="flex items-center gap-2">
+                                        <x-heroicon-o-arrow-path class="h-4 w-4 animate-spin" /> Cancelando...
+                                    </span>
+                                </button>
+                                <button
+                                    wire:click="dismissCancel"
+                                    class="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-700 transition hover:border-gray-300 dark:border-white/10 dark:bg-white/5 dark:text-gray-200"
+                                >
+                                    Manter assinatura
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            @else
+                <section class="overflow-hidden rounded-[30px] border border-gray-200/80 bg-white/95 px-6 py-6 shadow-sm dark:border-white/10 dark:bg-gray-950/75 sm:px-8">
+                    <div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p class="text-[11px] font-bold uppercase tracking-[0.22em] text-gray-500">Minha assinatura</p>
+                            <h3 class="mt-2 text-lg font-black tracking-[-0.02em] text-gray-900 dark:text-white">
+                                Plano {{ $barbershop->subscription_plan === 'Basico' ? 'Básico' : $barbershop->subscription_plan }}
+                            </h3>
+                            <div class="mt-3 flex flex-wrap gap-6">
+                                <div>
+                                    <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">Acesso garantido até</p>
+                                    <p class="mt-1 text-sm font-semibold text-gray-800 dark:text-gray-200">
+                                        {{ $barbershop->subscription_expires_at?->format('d/m/Y') }}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">Status</p>
+                                    <p class="mt-1 text-sm font-semibold {{ $barbershop->subscription_status === 'cancelled' ? 'text-orange-600 dark:text-orange-400' : 'text-emerald-600 dark:text-emerald-400' }}">
+                                        {{ $barbershop->subscription_status === 'cancelled' ? 'Cancelada · sem renovação automática' : 'Ativa' }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        @if($barbershop->subscription_status !== 'cancelled')
+                            <button
+                                wire:click="confirmCancel"
+                                class="inline-flex shrink-0 items-center justify-center rounded-2xl border border-rose-200 bg-white px-4 py-3 text-sm font-semibold text-rose-600 transition hover:border-rose-300 hover:bg-rose-50 dark:border-rose-500/30 dark:bg-transparent dark:text-rose-400 dark:hover:bg-rose-500/10"
+                            >
+                                Cancelar assinatura
+                            </button>
+                        @else
+                            <p class="shrink-0 text-sm font-medium text-orange-600 dark:text-orange-400">
+                                Assine novamente abaixo para renovar o acesso.
+                            </p>
+                        @endif
+                    </div>
+                </section>
+            @endif
         @endif
+        {{-- ──────────────────────────────────────────────────────────────── --}}
 
-        {{-- ── Grid de Planos ─────────────────────────────────── --}}
-        @if(!$paymentId && !$showCardForm)
-            <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        @if($paymentId && $pixCopyPaste)
+            @php
+                $selectedPlan = $this->plans->find($selectedPlanId);
+                $selectedPlanDisplayName = $selectedPlan?->name === 'Basico' ? 'Básico' : $selectedPlan?->name;
+            @endphp
+            <div class="grid gap-6 xl:grid-cols-[0.82fr_1.18fr] xl:items-start">
+                <aside class="space-y-6 xl:sticky xl:top-6">
+                    <div class="overflow-hidden rounded-[30px] border border-gray-200/80 bg-gray-950 text-white shadow-[0_18px_60px_-28px_rgba(15,23,42,0.55)] dark:border-white/10">
+                        <div class="bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.26),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0))] px-6 py-7 sm:px-7">
+                            <span class="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-amber-200/90">
+                                Cobrança em andamento
+                            </span>
+                            <h2 class="mt-4 text-3xl font-black tracking-[-0.03em] text-white">{{ $selectedPlanDisplayName }}</h2>
+                            <p class="mt-3 text-sm leading-7 text-white/70">
+                                Finalize agora para liberar sua assinatura.
+                            </p>
+
+                            <div class="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                                <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
+                                    <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-white/45">Ciclo</p>
+                                    <p class="mt-2 text-base font-semibold text-white">{{ $selectedPlan?->billing_cycle_label }}</p>
+                                    <p class="mt-1 text-sm text-white/65">{{ $selectedPlan?->billing_cycle_description }}</p>
+                                </div>
+                                <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
+                                    <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-white/45">Valor</p>
+                                    <p class="mt-2 text-base font-semibold text-white">R$ {{ number_format((float) $selectedPlan?->price, 2, ',', '.') }}</p>
+                                    <p class="mt-1 text-sm text-white/65">Ativação automática após confirmação.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rounded-[28px] border border-gray-200/80 bg-white/95 p-6 shadow-sm dark:border-white/10 dark:bg-gray-950/70">
+                        <p class="text-[11px] font-bold uppercase tracking-[0.22em] text-gray-500">Fluxo</p>
+                        <div class="mt-5 space-y-4">
+                            <div class="flex gap-3">
+                                <span class="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-sm font-bold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">1</span>
+                                <div>
+                                    <p class="text-sm font-semibold text-gray-900 dark:text-white">Escolha cartão ou PIX</p>
+                                    <p class="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-300">Cartão em destaque, PIX disponível.</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-3">
+                                <span class="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-sm font-bold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">2</span>
+                                <div>
+                                    <p class="text-sm font-semibold text-gray-900 dark:text-white">Confirme o pagamento</p>
+                                    <p class="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-300">A ativação é automática.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+
+                <section class="overflow-hidden rounded-[30px] border border-gray-200/80 bg-white/95 shadow-[0_20px_60px_-34px_rgba(15,23,42,0.3)] dark:border-white/10 dark:bg-gray-950/75">
+                    <div class="border-b border-gray-200/80 px-6 py-6 md:px-8 dark:border-white/10">
+                        <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+                            <div>
+                                <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-amber-700 dark:text-amber-300">Checkout da assinatura</p>
+                                <h2 class="mt-3 text-2xl font-black tracking-[-0.03em] text-gray-950 dark:text-white sm:text-3xl">Finalize sua cobrança</h2>
+                                <p class="mt-2 max-w-2xl text-sm leading-6 text-gray-600 dark:text-gray-300">
+                                    Valor do ciclo {{ $selectedPlan?->billing_cycle_label }}: <span class="font-bold text-gray-950 dark:text-white">R$ {{ number_format((float) $selectedPlan?->price, 2, ',', '.') }}</span>
+                                </p>
+                            </div>
+                            <button wire:click="cancelPix" class="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:border-amber-300 hover:text-amber-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:border-amber-500/40 dark:hover:text-amber-300">
+                                Trocar plano
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="p-6 md:p-8">
+                        <div class="grid gap-5 lg:grid-cols-2">
+                            <div class="rounded-[26px] border border-gray-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,250,252,0.9))] p-6 dark:border-white/10 dark:bg-white/5">
+                                <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-500">Recomendado</p>
+                                <h3 class="mt-3 text-xl font-black tracking-[-0.02em] text-gray-900 dark:text-white">Pagar com cartão</h3>
+                                <p class="mt-3 text-sm leading-6 text-gray-700 dark:text-gray-300">
+                                    Crédito ou débito. Ativação imediata após confirmação.
+                                </p>
+
+                                {{-- Bandeiras aceitas --}}
+                                <div class="mt-4 flex flex-wrap items-center gap-2">
+                                    @foreach(['VISA', 'MASTER', 'ELO', 'AMEX', 'HIPERCARD'] as $brand)
+                                        <span class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[10px] font-bold tracking-wide text-gray-600 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-gray-300">
+                                            {{ $brand }}
+                                        </span>
+                                    @endforeach
+                                </div>
+
+                                <div class="mt-4 rounded-2xl border border-blue-100 bg-blue-50/80 px-4 py-2.5 text-xs text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300">
+                                    Não é necessário ter conta ou saldo no Mercado Pago.
+                                </div>
+
+                                <div class="mt-4">
+                                    <button
+                                        wire:click="initiateCardPayment({{ $selectedPlanId }})"
+                                        wire:loading.attr="disabled"
+                                        wire:target="initiateCardPayment({{ $selectedPlanId }})"
+                                        class="inline-flex w-full items-center justify-center rounded-2xl bg-gray-950 px-5 py-4 text-sm font-bold text-white transition hover:bg-gray-800 disabled:opacity-60 dark:bg-white dark:text-gray-950 dark:hover:bg-gray-100"
+                                    >
+                                        <span wire:loading.remove wire:target="initiateCardPayment({{ $selectedPlanId }})">Pagar com cartão</span>
+                                        <span wire:loading wire:target="initiateCardPayment({{ $selectedPlanId }})" class="flex items-center gap-2">
+                                            <x-heroicon-o-arrow-path class="h-4 w-4 animate-spin" /> Abrindo...
+                                        </span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="rounded-[26px] border border-amber-200/80 bg-[linear-gradient(180deg,rgba(255,251,235,0.65),rgba(255,255,255,0.96))] p-6 dark:border-amber-500/20 dark:bg-[linear-gradient(180deg,rgba(245,158,11,0.08),rgba(255,255,255,0.02))]">
+                                <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                    <div>
+                                        <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-amber-700 dark:text-amber-300">Alternativa</p>
+                                        <h3 class="mt-3 text-xl font-black tracking-[-0.02em] text-gray-900 dark:text-white">Pagar com PIX</h3>
+                                        <p class="mt-3 text-sm leading-6 text-gray-700 dark:text-gray-300">
+                                            QR Code e copia e cola na mesma tela.
+                                        </p>
+                                    </div>
+                                    @if($showPixDetails)
+                                        <button wire:click="hidePixDetails" class="text-sm font-semibold text-gray-700 underline decoration-gray-300 underline-offset-4 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white">
+                                            Ocultar PIX
+                                        </button>
+                                    @else
+                                        <button wire:click="revealPixDetails" class="inline-flex items-center justify-center rounded-2xl border border-amber-300 bg-white px-4 py-3 text-sm font-bold text-amber-700 transition hover:border-amber-400 hover:bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/15">
+                                            Mostrar QR Code
+                                        </button>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+
+                        @if($showPixDetails)
+                            <div class="mt-6 grid gap-6 border-t border-gray-200 pt-6 dark:border-white/10 lg:grid-cols-[minmax(280px,0.72fr)_minmax(0,1fr)] lg:items-start">
+                                <div class="flex flex-col items-center gap-4 rounded-[28px] bg-[linear-gradient(180deg,#fff7ed,#ffffff)] p-6 shadow-inner shadow-amber-100/60 dark:bg-transparent dark:shadow-none">
+                                    <p class="text-sm font-semibold text-gray-700 dark:text-gray-400">
+                                        Escaneie com seu app de banco
+                                    </p>
+                                    @if($pixQrCode)
+                                        <div class="rounded-[28px] border-4 border-amber-300 bg-white p-3 shadow-xl shadow-amber-100/60 dark:border-amber-400 dark:shadow-amber-900/20">
+                                            <img
+                                                src="data:image/png;base64,{{ $pixQrCode }}"
+                                                alt="QR Code PIX"
+                                                class="h-52 w-52"
+                                            >
+                                        </div>
+                                    @endif
+                                    <div class="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-white/80 px-3 py-1.5 text-xs text-gray-500 dark:border-white/10 dark:bg-white/5 dark:text-gray-400">
+                                        <x-heroicon-o-arrow-path class="h-3 w-3 animate-spin opacity-60" />
+                                        <span wire:poll.5000ms>Aguardando confirmação...</span>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-4">
+                                    <div class="rounded-[28px] border border-gray-200 bg-white/90 p-5 shadow-lg shadow-gray-200/60 dark:border-white/10 dark:bg-white/5">
+                                        <label class="mb-3 block text-[11px] font-bold uppercase tracking-[0.2em] text-gray-700 dark:text-gray-400">
+                                            Pix Copia e Cola
+                                        </label>
+                                        <textarea
+                                            readonly
+                                            rows="5"
+                                            onclick="this.select()"
+                                            class="w-full rounded-2xl border border-gray-300 bg-gray-50 px-4 py-3 text-xs text-gray-800 shadow-inner shadow-gray-200/40 resize-none font-mono dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300"
+                                        >{{ $pixCopyPaste }}</textarea>
+
+                                        <button
+                                            wire:click="markCopied"
+                                            onclick="navigator.clipboard.writeText('{{ $pixCopyPaste }}').then(() => {})"
+                                            class="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition-all
+                                                {{ $copied
+                                                    ? 'border border-green-300 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                                    : 'bg-amber-500 text-white shadow-md hover:bg-amber-600 hover:shadow-lg' }}"
+                                        >
+                                            @if($copied)
+                                                <x-heroicon-o-check class="h-4 w-4" />
+                                                Copiado!
+                                            @else
+                                                <x-heroicon-o-clipboard-document class="h-4 w-4" />
+                                                Copiar código PIX
+                                            @endif
+                                        </button>
+                                    </div>
+
+                                    <div class="rounded-[28px] border border-blue-200 bg-blue-50 p-5 dark:border-blue-800 dark:bg-blue-900/20">
+                                        <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-blue-700 dark:text-blue-400">Como pagar</p>
+                                        <ol class="mt-4 space-y-3 text-sm text-blue-700 dark:text-blue-300">
+                                            <li class="flex gap-3">
+                                                <span class="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">1</span>
+                                                Abra seu app do banco.
+                                            </li>
+                                            <li class="flex gap-3">
+                                                <span class="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">2</span>
+                                                Escaneie o QR Code ou cole o código.
+                                            </li>
+                                            <li class="flex gap-3">
+                                                <span class="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">3</span>
+                                                Confirme <strong>R$ {{ number_format((float) $selectedPlan?->price, 2, ',', '.') }}</strong> do plano {{ $selectedPlan?->billing_cycle_label }}.
+                                            </li>
+                                        </ol>
+                                        <p class="mt-4 text-sm font-semibold text-blue-700 dark:text-blue-300">
+                                            Ativação automática após confirmação.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                </section>
+            </div>
+        @elseif($showCardForm && $selectedPlanId)
+            {{-- ── Checkout Bricks inline (sem redirecionamento, sem login MP) ──── --}}
+            @php $brickPlan = $this->plans->find($selectedPlanId); @endphp
+            <div class="grid gap-6 xl:grid-cols-[0.82fr_1.18fr] xl:items-start">
+
+                <aside class="space-y-4 xl:sticky xl:top-6">
+                    <div class="overflow-hidden rounded-[30px] border border-gray-200/80 bg-gray-950 text-white shadow-[0_18px_60px_-28px_rgba(15,23,42,0.55)] dark:border-white/10">
+                        <div class="bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.26),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0))] px-6 py-7 sm:px-7">
+                            <span class="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-amber-200/90">
+                                Plano selecionado
+                            </span>
+                            <h2 class="mt-4 text-3xl font-black tracking-[-0.03em] text-white">
+                                {{ $brickPlan?->name === 'Basico' ? 'Básico' : $brickPlan?->name }}
+                            </h2>
+                            <div class="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                                <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
+                                    <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-white/45">Ciclo</p>
+                                    <p class="mt-2 text-base font-semibold text-white">{{ $brickPlan?->billing_cycle_label }}</p>
+                                </div>
+                                <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
+                                    <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-white/45">Valor cobrado</p>
+                                    <p class="mt-2 text-base font-semibold text-white">R$ {{ number_format((float) $brickPlan?->price, 2, ',', '.') }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button
+                        wire:click="cancelCardForm"
+                        class="inline-flex w-full items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:border-amber-300 hover:text-amber-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:border-amber-500/40 dark:hover:text-amber-300"
+                    >
+                        ← Trocar plano
+                    </button>
+                </aside>
+
+                <section class="overflow-hidden rounded-[30px] border border-gray-200/80 bg-white/95 shadow-[0_20px_60px_-34px_rgba(15,23,42,0.3)] dark:border-white/10 dark:bg-gray-950/75">
+                    <div class="border-b border-gray-200/80 px-8 py-9 dark:border-white/10 md:px-10">
+                        <div class="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
+                            <div class="space-y-3">
+                                <div class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5 dark:border-emerald-500/25 dark:bg-emerald-500/10">
+                                    <x-heroicon-o-lock-closed class="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                                    <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-400">Pagamento seguro SSL</span>
+                                </div>
+                                <h2 class="text-2xl font-black tracking-[-0.03em] text-gray-950 dark:text-white">Dados do cartão</h2>
+                                <p class="text-sm leading-relaxed text-gray-500 dark:text-gray-400">Crédito ou débito &nbsp;·&nbsp; sem conta no Mercado Pago</p>
+                            </div>
+
+                            {{-- Bandeiras aceitas --}}
+                            <div class="flex shrink-0 flex-col items-start gap-3 sm:items-end">
+                                <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400 dark:text-gray-500">Bandeiras aceitas</span>
+                                <div class="flex items-center gap-1.5">
+                                    {{-- Visa --}}
+                                    <div class="flex h-8 w-[50px] items-center justify-center rounded-md shadow-sm" style="background: linear-gradient(160deg,#1a1f71,#0d1248);">
+                                        <span style="font-family:sans-serif;font-size:13px;font-weight:900;font-style:italic;letter-spacing:-0.02em;color:#fff;">VISA</span>
+                                    </div>
+                                    {{-- Mastercard --}}
+                                    <div class="flex h-8 w-[50px] items-center justify-center rounded-md bg-[#252525] shadow-sm">
+                                        <svg width="30" height="19" viewBox="0 0 30 19" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <circle cx="11" cy="9.5" r="9" fill="#EB001B"/>
+                                            <circle cx="19" cy="9.5" r="9" fill="#F79E1B"/>
+                                            <path d="M15 2.8a9 9 0 0 1 0 13.4A9 9 0 0 1 15 2.8z" fill="#FF5F00"/>
+                                        </svg>
+                                    </div>
+                                    {{-- Elo --}}
+                                    <div class="flex h-8 w-[50px] items-center justify-center rounded-md shadow-sm" style="background:#ffcb00;">
+                                        <span style="font-size:12px;font-weight:900;letter-spacing:-0.04em;color:#1a1a1a;">elo</span>
+                                    </div>
+                                    {{-- Amex --}}
+                                    <div class="flex h-8 w-[50px] items-center justify-center rounded-md shadow-sm" style="background:linear-gradient(160deg,#006fcf,#004fa0);">
+                                        <span style="font-size:10px;font-weight:900;letter-spacing:0.06em;color:#fff;">AMEX</span>
+                                    </div>
+                                    {{-- Hipercard --}}
+                                    <div class="flex h-8 w-[50px] items-center justify-center rounded-md shadow-sm" style="background:linear-gradient(160deg,#be001e,#8a0015);">
+                                        <span style="font-size:9px;font-weight:900;letter-spacing:0.05em;color:#fff;">HIPER</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-6 md:p-8">
+                        {{-- Brick container — wire:ignore impede o Livewire de apagar o form do SDK --}}
+                        @php $mpPublicKey = config('services.mercadopago.public_key'); @endphp
+
+                        @if(empty($mpPublicKey))
+                            <div class="rounded-2xl border border-rose-200 bg-rose-50 p-5 dark:border-rose-500/30 dark:bg-rose-500/10">
+                                <p class="font-bold text-rose-700 dark:text-rose-400">Configuração incompleta</p>
+                                <p class="mt-1 text-sm text-rose-600 dark:text-rose-300">
+                                    A variável <code class="rounded bg-rose-100 px-1 dark:bg-rose-500/20">MERCADOPAGO_PUBLIC_KEY</code>
+                                    não está definida no servidor. Adicione-a em
+                                    <strong>Forge → Environment</strong> e faça um novo deploy.
+                                </p>
+                            </div>
+                        @else
+                        <div
+                            x-data="{
+                                brickError: null,
+                                async init() {
+                                    if (window._mpBrickMounted) return;
+                                    window._mpBrickMounted = true;
+                                    try {
+                                        await this.loadSDK();
+                                        const mp = new MercadoPago({{ Js::from($mpPublicKey) }}, { locale: 'pt-BR' });
+                                        const builder = mp.bricks();
+                                        await builder.create('cardPayment', 'saas-card-brick', {
+                                            initialization: {
+                                                amount: {{ Js::from((float) ($brickPlan?->price ?? 0)) }},
+                                            },
+                                            customization: {
+                                                visual: { hideFormTitle: true },
+                                                paymentMethods: { maxInstallments: 12 },
+                                            },
+                                            callbacks: {
+                                                onSubmit: async (formData) => {
+                                                    return new Promise((resolve, reject) => {
+                                                        $wire.processCardPayment({{ $selectedPlanId }}, formData)
+                                                            .then(() => resolve())
+                                                            .catch((e) => reject(e));
+                                                    });
+                                                },
+                                                onError: (error) => {
+                                                    console.error('MP Brick error:', error);
+                                                    this.brickError = 'Erro ao carregar o formulário de cartão: ' + (error.message ?? JSON.stringify(error));
+                                                },
+                                                onReady: () => { this.brickError = null; },
+                                            },
+                                        });
+                                    } catch (e) {
+                                        window._mpBrickMounted = false;
+                                        console.error('Brick init failed:', e);
+                                        this.brickError = 'Não foi possível carregar o formulário. Verifique sua conexão e recarregue a página.';
+                                    }
+                                },
+                                destroy() {
+                                    window._mpBrickMounted = false;
+                                },
+                                loadSDK() {
+                                    return new Promise((resolve, reject) => {
+                                        if (window.MercadoPago) { resolve(); return; }
+                                        const s = document.createElement('script');
+                                        s.src = 'https://sdk.mercadopago.com/js/v2';
+                                        s.onload = resolve;
+                                        s.onerror = () => reject(new Error('Falha ao carregar o SDK do Mercado Pago'));
+                                        document.head.appendChild(s);
+                                    });
+                                },
+                            }"
+                            x-init="init()"
+                            wire:ignore
+                        >
+                            <template x-if="brickError">
+                                <div class="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300" x-text="brickError"></div>
+                            </template>
+                            <div id="saas-card-brick"></div>
+                        </div>
+                        @endif
+                    </div>
+                </section>
+            </div>
+
+        @else
+            <div class="grid gap-6 xl:grid-cols-3">
                 @foreach($this->plans as $plan)
                     @php
-                        $isCurrent = $isActive && $barbershop->subscription_plan === $plan->name;
-                        $displayName = $plan->name === 'Basico' ? 'Básico' : $plan->name;
+                        $isCurrentPlan = $isActive && $barbershop->subscription_plan === $plan->name;
                         $referenceTotal = $monthlyReferencePlan ? (float) $monthlyReferencePlan->price * max(1, $plan->billing_cycle_months) : null;
                         $savingsAmount = $referenceTotal && $plan->billing_cycle_months > 1 ? max(0, $referenceTotal - (float) $plan->price) : 0;
                         $savingsPercent = $referenceTotal && $savingsAmount > 0 ? round(($savingsAmount / $referenceTotal) * 100) : 0;
+                        $displayName = $plan->name === 'Basico' ? 'Básico' : $plan->name;
                     @endphp
-
-                    <div @class([
-                        'relative flex flex-col rounded-[2.5rem] border p-8 transition-all duration-300',
-                        'border-amber-500 ring-2 ring-amber-500/20 bg-amber-50/10 dark:bg-amber-500/5' => $plan->is_popular,
-                        'border-gray-200 bg-white dark:border-white/10 dark:bg-gray-900 shadow-sm hover:shadow-md' => !$plan->is_popular,
-                    ])>
+                    <div class="{{ $plan->is_popular ? 'dark' : '' }} group relative flex flex-col overflow-hidden rounded-[30px] border {{ $plan->is_popular ? 'border-amber-400/40 bg-gray-950 shadow-[0_0_0_1px_rgba(245,158,11,0.15),0_32px_80px_-20px_rgba(245,158,11,0.28)]' : 'border-gray-200/80 bg-white/95 shadow-[0_18px_50px_-34px_rgba(15,23,42,0.22)] dark:border-white/10 dark:bg-gray-950/75' }} p-7 sm:p-8">
+                        {{-- Background overlays --}}
                         @if($plan->is_popular)
-                            <span class="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-amber-500 px-4 py-1 text-[10px] font-black uppercase tracking-widest text-white shadow-lg">Recomendado</span>
+                            <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_65%_55%_at_105%_-5%,rgba(245,158,11,0.2),transparent_58%)]"></div>
+                            <div class="pointer-events-none absolute inset-0" style="background-image:radial-gradient(circle,rgba(255,255,255,0.04) 1px,transparent 1px);background-size:22px 22px;"></div>
+                        @else
+                            <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(245,158,11,0.1),_transparent_35%)] opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
                         @endif
 
-                        <div class="mb-8">
-                            <h3 class="text-2xl font-black text-gray-950 dark:text-white">{{ $displayName }}</h3>
-                            <p class="mt-2 text-sm font-medium text-gray-400 uppercase tracking-widest">{{ $plan->billing_cycle_label }}</p>
+                        <div class="relative mb-8">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-500">Plano {{ $plan->billing_cycle_label }}</p>
+                                    <h3 class="mt-3 text-2xl font-black tracking-[-0.03em] text-gray-900 dark:text-white">{{ $displayName }}</h3>
+                                    <p class="mt-4 max-w-xs text-sm leading-7 text-gray-600 dark:text-gray-300 line-clamp-3">{{ $plan->description }}</p>
+                                </div>
+                                @if($plan->is_popular)
+                                    <span class="inline-flex shrink-0 items-center rounded-full border border-amber-300 bg-amber-100 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+                                        Mais popular
+                                    </span>
+                                @endif
+                            </div>
+                            <p class="mt-6 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">
+                                {{ $plan->billing_cycle_description }}
+                            </p>
                         </div>
 
-                        <div class="mb-8 flex items-baseline gap-1">
-                            <span class="text-4xl font-black tracking-tight text-gray-950 dark:text-white">R$ {{ number_format((float) $plan->price, 2, ',', '.') }}</span>
-                            <span class="text-sm font-medium text-gray-500">/ciclo</span>
+                        <div class="relative mb-8 rounded-[24px] border border-gray-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,250,252,0.92))] p-6 dark:border-white/10 dark:bg-white/5">
+                            <div class="flex items-end gap-2">
+                                <span class="text-4xl font-black leading-none tracking-tight text-gray-900 dark:text-white">
+                                    R$ {{ number_format((float) $plan->price, 2, ',', '.') }}
+                                </span>
+                                <span class="mb-1 text-sm font-medium text-gray-600 dark:text-gray-500">/{{ $plan->billing_cycle_label }}</span>
+                            </div>
+                            @if($plan->billing_cycle_months > 1)
+                                <div class="mt-5 rounded-2xl border border-green-200 bg-green-50/85 px-4 py-3 dark:border-green-500/20 dark:bg-green-500/10">
+                                    <p class="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                        Equivale a <span class="font-bold text-gray-900 dark:text-white">R$ {{ number_format((float) $plan->monthly_equivalent, 2, ',', '.') }}/mês</span>
+                                    </p>
+                                    <p class="mt-1 text-sm font-bold text-green-700 dark:text-green-400">
+                                        Economize {{ $savingsPercent }}% e preserve R$ {{ number_format((float) $savingsAmount, 2, ',', '.') }} no ciclo
+                                    </p>
+                                </div>
+                            @else
+                                <span class="mt-5 inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
+                                    Flexibilidade total para pagar mês a mês
+                                </span>
+                            @endif
                         </div>
 
-                        <ul class="mb-10 flex-1 space-y-4">
+                        <ul class="relative mb-10 flex-1 space-y-4">
                             @foreach((array) $plan->features as $feature)
-                                <li class="flex items-start gap-3 text-sm text-gray-600 dark:text-gray-300">
-                                    <x-heroicon-m-check-circle class="h-5 w-5 shrink-0 text-emerald-500" />
+                                <li class="flex items-start gap-3 text-sm leading-6 text-gray-700 dark:text-gray-300">
+                                    <span class="mt-0.5 inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-400">
+                                        <x-heroicon-o-check class="h-3.5 w-3.5" />
+                                    </span>
                                     {{ $feature }}
                                 </li>
                             @endforeach
                         </ul>
 
-                        @if($isCurrent)
-                            <div class="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-50 py-4 text-sm font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
-                                <x-heroicon-s-check-badge class="h-5 w-5" />
-                                Plano Atual
+                        @if($isCurrentPlan)
+                            <div class="w-full rounded-2xl border border-green-300 bg-green-50 px-4 py-4 text-center text-sm font-semibold text-green-700 dark:border-green-700 dark:bg-green-900/20 dark:text-green-400">
+                                Plano atual
                             </div>
                         @else
-                            <div class="space-y-3">
-                                <button wire:click="initiateCardPayment({{ $plan->id }})" class="group w-full rounded-2xl bg-gray-950 py-4 text-sm font-bold text-white transition hover:bg-gray-800 dark:bg-white dark:text-gray-950 dark:hover:bg-gray-100 shadow-xl shadow-gray-950/10">
-                                    Pagar com Cartão
+                            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                                <button
+                                    wire:click="initiateCardPayment({{ $plan->id }})"
+                                    wire:loading.attr="disabled"
+                                    wire:target="initiateCardPayment({{ $plan->id }})"
+                                    class="w-full rounded-2xl px-5 py-4 text-sm font-semibold leading-6 transition-all
+                                        {{ $plan->is_popular
+                                            ? 'bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-60'
+                                            : 'bg-gray-950 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-950 disabled:opacity-60' }}"
+                                >
+                                    <span wire:loading.remove wire:target="initiateCardPayment({{ $plan->id }})">
+                                        Cartão de crédito / débito
+                                    </span>
+                                    <span wire:loading wire:target="initiateCardPayment({{ $plan->id }})" class="flex items-center justify-center gap-2">
+                                        <x-heroicon-o-arrow-path class="h-4 w-4 animate-spin" />
+                                        Carregando...
+                                    </span>
                                 </button>
-                                <button wire:click="selectPlan({{ $plan->id }})" class="w-full rounded-2xl border border-gray-200 bg-white py-4 text-sm font-bold text-gray-700 transition hover:bg-gray-50 dark:border-white/10 dark:bg-transparent dark:text-gray-300 dark:hover:bg-white/5">
-                                    Gerar PIX
+
+                                <button
+                                    wire:click="selectPlan({{ $plan->id }})"
+                                    wire:loading.attr="disabled"
+                                    wire:target="selectPlan({{ $plan->id }})"
+                                    class="w-full rounded-2xl border border-gray-200 bg-white px-5 py-4 text-sm font-semibold text-gray-700 transition-all hover:border-amber-300 hover:text-amber-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:border-amber-500/40 dark:hover:text-amber-300"
+                                >
+                                    <span wire:loading.remove wire:target="selectPlan({{ $plan->id }})">
+                                        Gerar PIX
+                                    </span>
+                                    <span wire:loading wire:target="selectPlan({{ $plan->id }})" class="flex items-center justify-center gap-2">
+                                        <x-heroicon-o-arrow-path class="h-4 w-4 animate-spin" />
+                                        Gerando PIX...
+                                    </span>
                                 </button>
                             </div>
-                        @endif
-
-                        @if($savingsPercent > 0)
-                            <p class="mt-6 text-center text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                                Economia de {{ $savingsPercent }}% neste plano
-                            </p>
                         @endif
                     </div>
                 @endforeach
             </div>
+
+            <p class="text-center text-xs text-gray-400 dark:text-gray-600">
+                Preços em reais (BRL) · pagamento único por ciclo · sem cobrança recorrente automática
+            </p>
         @endif
-
-        {{-- ── Checkout / PIX ────────────────────────────────── --}}
-        @if($paymentId && $pixCopyPaste)
-            <div class="rounded-[2.5rem] border border-gray-200 bg-white p-8 dark:border-white/10 dark:bg-gray-900 shadow-xl overflow-hidden">
-                <div class="grid gap-12 lg:grid-cols-2">
-                    <div class="space-y-8">
-                        <div>
-                            <h2 class="text-3xl font-black text-gray-950 dark:text-white">Pagamento via PIX</h2>
-                            <p class="mt-2 text-gray-500">Escaneie o código ou copie o link abaixo para ativar sua conta agora.</p>
-                        </div>
-
-                        <div class="flex flex-col items-center justify-center rounded-3xl bg-gray-50 p-8 dark:bg-white/5 border-2 border-dashed border-gray-200 dark:border-white/10">
-                            @if($pixQrCode)
-                                <div class="rounded-2xl bg-white p-4 shadow-lg border border-gray-100">
-                                    <img src="data:image/png;base64,{{ $pixQrCode }}" class="h-48 w-48" alt="QR Code PIX">
-                                </div>
-                            @endif
-                            <div class="mt-6 flex items-center gap-3 text-sm font-bold text-amber-600 animate-pulse">
-                                <x-heroicon-o-arrow-path class="h-5 w-5 animate-spin" />
-                                Aguardando pagamento...
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="space-y-6">
-                        <div class="rounded-3xl bg-gray-950 p-8 text-white shadow-2xl">
-                            <p class="text-xs font-bold uppercase tracking-widest text-white/50">Valor do Plano</p>
-                            <h4 class="mt-2 text-4xl font-black">R$ {{ number_format((float) $this->plans->find($selectedPlanId)?->price, 2, ',', '.') }}</h4>
-                            <hr class="my-6 border-white/10">
-                            <div class="space-y-4">
-                                <label class="text-xs font-bold uppercase tracking-widest text-white/50">Pix Copia e Cola</label>
-                                <div class="relative group">
-                                    <textarea readonly class="w-full rounded-xl border-none bg-white/5 p-4 pr-12 text-xs font-mono text-white/80 focus:ring-amber-500">{{ $pixCopyPaste }}</textarea>
-                                    <button 
-                                        onclick="navigator.clipboard.writeText('{{ $pixCopyPaste }}'); alert('Copiado!')"
-                                        class="absolute right-3 top-3 rounded-lg bg-amber-500 p-2 text-white transition hover:bg-amber-600"
-                                    >
-                                        <x-heroicon-s-clipboard-document-check class="h-4 w-4" />
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        <button wire:click="cancelPix" class="w-full text-center text-sm font-bold text-gray-400 hover:text-gray-600">Escolher outro plano</button>
-                    </div>
-                </div>
-            </div>
-        @endif
-
-        {{-- ── Mercado Pago Brick ───────────────────────────── --}}
-        @if($showCardForm && $selectedPlanId)
-            <div class="rounded-[2.5rem] border border-gray-200 bg-white p-8 dark:border-white/10 dark:bg-gray-900 shadow-xl animate-in slide-in-from-bottom-4 duration-500">
-                <div class="mb-8 flex items-center justify-between border-b pb-6 dark:border-white/10">
-                    <div>
-                        <h2 class="text-2xl font-black text-gray-950 dark:text-white">Pagamento Seguro</h2>
-                        <p class="text-sm text-gray-500">Dados protegidos por criptografia SSL</p>
-                    </div>
-                    <button wire:click="cancelCardForm" class="rounded-xl bg-gray-100 p-3 hover:bg-gray-200 dark:bg-white/5 dark:hover:bg-white/10">
-                        <x-heroicon-o-x-mark class="h-6 w-6 text-gray-500" />
-                    </button>
-                </div>
-
-                {{-- O SDK do MP precisa de um container limpo --}}
-                <div wire:ignore class="min-h-[400px]">
-                    @php $mpPublicKey = config('services.mercadopago.public_key'); @endphp
-                    @if(empty($mpPublicKey))
-                        <div class="p-8 text-center text-rose-500 font-bold border-2 border-dashed rounded-3xl border-rose-200">
-                            Erro: Public Key não configurada.
-                        </div>
-                    @else
-                        <div id="saas-card-brick" x-data="{ 
-                            initMP() {
-                                const mp = new MercadoPago('{{ $mpPublicKey }}', { locale: 'pt-BR' });
-                                const builder = mp.bricks();
-                                builder.create('cardPayment', 'saas-card-brick', {
-                                    initialization: { amount: {{ (float) $this->plans->find($selectedPlanId)?->price }} },
-                                    customization: { visual: { hideFormTitle: true }, paymentMethods: { maxInstallments: 12 } },
-                                    callbacks: {
-                                        onSubmit: (formData) => {
-                                            return new Promise((resolve, reject) => {
-                                                $wire.processCardPayment({{ $selectedPlanId }}, formData)
-                                                    .then(() => resolve())
-                                                    .catch((e) => reject(e));
-                                            });
-                                        },
-                                        onError: (error) => console.error(error),
-                                    },
-                                });
-                            }
-                        }" x-init="initMP()"></div>
-                    @endif
-                </div>
-            </div>
-        @endif
-
-        {{-- Footer Trust Badges --}}
-        <footer class="flex flex-wrap justify-center gap-8 opacity-40 grayscale transition hover:grayscale-0">
-            <div class="flex items-center gap-2 text-sm font-bold">
-                <x-heroicon-o-shield-check class="h-5 w-5" /> SSL Seguro
-            </div>
-            <div class="flex items-center gap-2 text-sm font-bold">
-                <x-heroicon-o-bolt class="h-5 w-5" /> Ativação Imediata
-            </div>
-            <div class="flex items-center gap-2 text-sm font-bold">
-                <x-heroicon-o-chat-bubble-left-right class="h-5 w-5" /> Suporte 24/7
-            </div>
-        </footer>
     </div>
-
-    {{-- Script necessário para o MP Bricks --}}
-    @push('scripts')
-        <script src="https://sdk.mercadopago.com/js/v2"></script>
-    @endpush
 </x-filament-panels::page>
