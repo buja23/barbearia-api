@@ -395,48 +395,76 @@
                     </div>
                     <div class="p-6 md:p-8">
                         {{-- Brick container — wire:ignore impede o Livewire de apagar o form do SDK --}}
+                        @php $mpPublicKey = config('services.mercadopago.public_key'); @endphp
+
+                        @if(empty($mpPublicKey))
+                            <div class="rounded-2xl border border-rose-200 bg-rose-50 p-5 dark:border-rose-500/30 dark:bg-rose-500/10">
+                                <p class="font-bold text-rose-700 dark:text-rose-400">Configuração incompleta</p>
+                                <p class="mt-1 text-sm text-rose-600 dark:text-rose-300">
+                                    A variável <code class="rounded bg-rose-100 px-1 dark:bg-rose-500/20">MERCADOPAGO_PUBLIC_KEY</code>
+                                    não está definida no servidor. Adicione-a em
+                                    <strong>Forge → Environment</strong> e faça um novo deploy.
+                                </p>
+                            </div>
+                        @else
                         <div
                             x-data="{
                                 controller: null,
+                                brickError: null,
                                 async init() {
-                                    await this.loadSDK();
-                                    if (this.controller) { this.controller.unmount(); this.controller = null; }
-                                    const mp = new MercadoPago({{ Js::from(config('services.mercadopago.public_key')) }}, { locale: 'pt-BR' });
-                                    const builder = mp.bricks();
-                                    this.controller = await builder.create('cardPayment', 'saas-card-brick', {
-                                        initialization: {
-                                            amount: {{ Js::from((float) ($brickPlan?->price ?? 0)) }},
-                                        },
-                                        customization: {
-                                            visual: { hideFormTitle: true },
-                                            paymentMethods: { maxInstallments: 12 },
-                                        },
-                                        callbacks: {
-                                            onSubmit: async (formData) => {
-                                                return new Promise((resolve, reject) => {
-                                                    $wire.processCardPayment({{ $selectedPlanId }}, formData)
-                                                        .then(() => resolve())
-                                                        .catch((e) => reject(e));
-                                                });
+                                    try {
+                                        await this.loadSDK();
+                                        if (this.controller) { this.controller.unmount(); this.controller = null; }
+                                        const mp = new MercadoPago({{ Js::from($mpPublicKey) }}, { locale: 'pt-BR' });
+                                        const builder = mp.bricks();
+                                        this.controller = await builder.create('cardPayment', 'saas-card-brick', {
+                                            initialization: {
+                                                amount: {{ Js::from((float) ($brickPlan?->price ?? 0)) }},
                                             },
-                                            onError: (error) => console.error('MP Brick error:', error),
-                                        },
-                                    });
+                                            customization: {
+                                                visual: { hideFormTitle: true },
+                                                paymentMethods: { maxInstallments: 12 },
+                                            },
+                                            callbacks: {
+                                                onSubmit: async (formData) => {
+                                                    return new Promise((resolve, reject) => {
+                                                        $wire.processCardPayment({{ $selectedPlanId }}, formData)
+                                                            .then(() => resolve())
+                                                            .catch((e) => reject(e));
+                                                    });
+                                                },
+                                                onError: (error) => {
+                                                    console.error('MP Brick error:', error);
+                                                    this.brickError = 'Erro ao carregar o formulário de cartão: ' + (error.message ?? JSON.stringify(error));
+                                                },
+                                                onReady: () => { this.brickError = null; },
+                                            },
+                                        });
+                                    } catch (e) {
+                                        console.error('Brick init failed:', e);
+                                        this.brickError = 'Não foi possível carregar o formulário. Verifique sua conexão e recarregue a página.';
+                                    }
                                 },
                                 loadSDK() {
-                                    return new Promise((resolve) => {
+                                    return new Promise((resolve, reject) => {
                                         if (window.MercadoPago) { resolve(); return; }
                                         const s = document.createElement('script');
                                         s.src = 'https://sdk.mercadopago.com/js/v2';
                                         s.onload = resolve;
+                                        s.onerror = () => reject(new Error('Falha ao carregar o SDK do Mercado Pago'));
                                         document.head.appendChild(s);
                                     });
                                 },
                             }"
                             x-init="init()"
+                            wire:ignore
                         >
-                            <div wire:ignore id="saas-card-brick"></div>
+                            <template x-if="brickError">
+                                <div class="mb-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300" x-text="brickError"></div>
+                            </template>
+                            <div id="saas-card-brick"></div>
                         </div>
+                        @endif
                     </div>
                 </section>
             </div>
