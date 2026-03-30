@@ -409,15 +409,15 @@
                         @else
                         <div
                             x-data="{
-                                controller: null,
                                 brickError: null,
                                 async init() {
-                                    if (this.controller) return;
+                                    if (window._mpBrickMounted) return;
+                                    window._mpBrickMounted = true;
                                     try {
                                         await this.loadSDK();
                                         const mp = new MercadoPago({{ Js::from($mpPublicKey) }}, { locale: 'pt-BR' });
                                         const builder = mp.bricks();
-                                        this.controller = await builder.create('cardPayment', 'saas-card-brick', {
+                                        await builder.create('cardPayment', 'saas-card-brick', {
                                             initialization: {
                                                 amount: {{ Js::from((float) ($brickPlan?->price ?? 0)) }},
                                             },
@@ -441,9 +441,13 @@
                                             },
                                         });
                                     } catch (e) {
+                                        window._mpBrickMounted = false;
                                         console.error('Brick init failed:', e);
                                         this.brickError = 'Não foi possível carregar o formulário. Verifique sua conexão e recarregue a página.';
                                     }
+                                },
+                                destroy() {
+                                    window._mpBrickMounted = false;
                                 },
                                 loadSDK() {
                                     return new Promise((resolve, reject) => {
