@@ -85,6 +85,12 @@ class WebhookController extends Controller
             return false;
         }
 
+        // Rejeita webhooks com timestamp mais antigo que 5 minutos (replay attack)
+        if (abs(time() - (int) $ts) > 300) {
+            Log::warning('Webhook rejeitado: timestamp fora da janela de 5 minutos', ['ts' => $ts]);
+            return false;
+        }
+
         // Constrói o manifest conforme documentação oficial do Mercado Pago
         $dataId   = $request->input('data.id') ?? '';
         $manifest = "id:{$dataId};request-id:{$xRequestId};ts:{$ts};";

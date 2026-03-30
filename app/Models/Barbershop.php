@@ -32,6 +32,18 @@ class Barbershop extends Model
         'saas_pix_qr_code',
     ];
 
+    /**
+     * Campos que NUNCA devem aparecer em toJson() / toArray() / API responses.
+     * Proteção contra vazamento acidental de dados sensíveis de pagamento.
+     */
+    protected $hidden = [
+        'saas_pix_copy_paste',
+        'saas_pix_qr_code',
+        'saas_payment_id',
+        'saas_last_payment_id',
+        'pix_key',
+    ];
+
     protected $casts = [
         'trial_ends_at'           => 'datetime',
         'subscription_expires_at' => 'datetime',

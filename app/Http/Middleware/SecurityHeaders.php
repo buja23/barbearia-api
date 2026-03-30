@@ -18,9 +18,22 @@ class SecurityHeaders
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 
+        // CSP: permite o SDK do Mercado Pago e CDNs usados no Filament
+        $response->headers->set('Content-Security-Policy',
+            "default-src 'self'; " .
+            "script-src 'self' 'unsafe-inline' https://sdk.mercadopago.com https://cdn.jsdelivr.net; " .
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " .
+            "font-src 'self' https://fonts.gstatic.com data:; " .
+            "img-src 'self' data: blob: https:; " .
+            "connect-src 'self' https://api.mercadopago.com https://*.mercadopago.com; " .
+            "frame-src https://*.mercadopago.com https://*.mercadolibre.com; " .
+            "object-src 'none'; " .
+            "base-uri 'self';"
+        );
+
         // Força HTTPS em produção
         if (app()->isProduction()) {
-            $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+            $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
         }
 
         return $response;
