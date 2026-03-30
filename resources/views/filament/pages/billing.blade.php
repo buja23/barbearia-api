@@ -385,19 +385,19 @@
                 </aside>
 
                 <section class="overflow-hidden rounded-[30px] border border-gray-200/80 bg-white/95 shadow-[0_20px_60px_-34px_rgba(15,23,42,0.3)] dark:border-white/10 dark:bg-gray-950/75">
-                    <div class="border-b border-gray-200/80 px-6 py-7 dark:border-white/10 md:px-8">
-                        <div class="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-                            <div>
-                                <div class="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 dark:border-emerald-500/25 dark:bg-emerald-500/10">
-                                    <x-heroicon-o-lock-closed class="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                    <div class="border-b border-gray-200/80 px-8 py-9 dark:border-white/10 md:px-10">
+                        <div class="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
+                            <div class="space-y-3">
+                                <div class="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5 dark:border-emerald-500/25 dark:bg-emerald-500/10">
+                                    <x-heroicon-o-lock-closed class="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                                     <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-400">Pagamento seguro SSL</span>
                                 </div>
-                                <h2 class="mt-4 text-2xl font-black tracking-[-0.03em] text-gray-950 dark:text-white">Dados do cartão</h2>
-                                <p class="mt-1.5 text-sm text-gray-500 dark:text-gray-400">Crédito ou débito · sem conta no Mercado Pago</p>
+                                <h2 class="text-2xl font-black tracking-[-0.03em] text-gray-950 dark:text-white">Dados do cartão</h2>
+                                <p class="text-sm leading-relaxed text-gray-500 dark:text-gray-400">Crédito ou débito &nbsp;·&nbsp; sem conta no Mercado Pago</p>
                             </div>
 
                             {{-- Bandeiras aceitas --}}
-                            <div class="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+                            <div class="flex shrink-0 flex-col items-start gap-3 sm:items-end">
                                 <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400 dark:text-gray-500">Bandeiras aceitas</span>
                                 <div class="flex items-center gap-1.5">
                                     {{-- Visa --}}
@@ -428,7 +428,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="p-6 md:p-8">
+                    <div class="p-8 md:p-10">
                         {{-- Brick container — wire:ignore impede o Livewire de apagar o form do SDK --}}
                         @php $mpPublicKey = config('services.mercadopago.public_key'); @endphp
 
