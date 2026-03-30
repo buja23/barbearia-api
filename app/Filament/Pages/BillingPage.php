@@ -26,6 +26,7 @@ class BillingPage extends Page
     public bool    $copied             = false;
     public bool    $showPixDetails     = false;
     public bool    $showCancelConfirm  = false;
+    public bool    $showCardForm       = false;
 
     public function mount(): void
     {
@@ -167,6 +168,72 @@ class BillingPage extends Page
     public function markCopied(): void
     {
         $this->copied = true;
+    }
+
+    /**
+     * Inicia o fluxo de cartão via Bricks (sem redirecionamento).
+     * Cancela qualquer PIX pendente e exibe o formulário inline.
+     */
+    public function initiateCardPayment(int $planId): void
+    {
+        $this->selectedPlanId = $planId;
+        $this->paymentId      = null;
+        $this->pixQrCode      = null;
+        $this->pixCopyPaste   = null;
+        $this->copied         = false;
+        $this->showPixDetails = false;
+        $this->showCardForm   = true;
+    }
+
+    public function cancelCardForm(): void
+    {
+        $this->showCardForm   = false;
+        $this->selectedPlanId = null;
+    }
+
+    /**
+     * Chamado pelo Brick via $wire.call após o usuário submeter o cartão.
+     * Cria o pagamento no backend — o preço sempre vem do banco, nunca do form.
+     */
+    public function processCardPayment(int $planId, array $formData): void
+    {
+        $barbershop = $this->getBarbershop();
+        $plan       = SaasPlan::findOrFail($planId);
+
+        $result = (new PaymentService())->createSaasCardPayment($barbershop, $plan, $formData);
+
+        if (!$result['success']) {
+            Notification::make()->title('Pagamento recusado')->body($result['error'])->danger()->persistent()->send();
+            return;
+        }
+
+        if ($result['status'] === 'approved') {
+            $billingCycleMonths = max(1, (int) ($plan->billing_cycle_months ?? 1));
+            $expiresAt = now()->addMonthsNoOverflow($billingCycleMonths);
+            $barbershop->update([
+                'subscription_status'     => 'active',
+                'subscription_expires_at' => $expiresAt,
+                'subscription_plan'       => $plan->name,
+                'saas_plan_id'            => $plan->id,
+                'saas_last_payment_id'    => $result['payment_id'],
+                'saas_payment_id'         => null,
+            ]);
+            $this->showCardForm = false;
+            Notification::make()->title('🎉 Pagamento aprovado!')->body('Sua barbearia está ativa!')->success()->persistent()->send();
+            $this->redirect(route('filament.admin.pages.dashboard', ['tenant' => $barbershop->slug]));
+
+        } elseif (in_array($result['status'], ['pending', 'in_process', 'authorized'])) {
+            Notification::make()
+                ->title('Pagamento em análise')
+                ->body('Você será notificado assim que for confirmado. O acesso será liberado automaticamente.')
+                ->warning()->persistent()->send();
+
+        } else {
+            Notification::make()
+                ->title('Pagamento recusado')
+                ->body('Verifique os dados do cartão e tente novamente.')
+                ->danger()->persistent()->send();
+        }
     }
 
     public function confirmCancel(): void

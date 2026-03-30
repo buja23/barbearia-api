@@ -150,7 +150,6 @@
                 $selectedPlan = $this->plans->find($selectedPlanId);
                 $selectedPlanDisplayName = $selectedPlan?->name === 'Basico' ? 'Básico' : $selectedPlan?->name;
             @endphp
-
             <div class="grid gap-6 xl:grid-cols-[0.82fr_1.18fr] xl:items-start">
                 <aside class="space-y-6 xl:sticky xl:top-6">
                     <div class="overflow-hidden rounded-[30px] border border-gray-200/80 bg-gray-950 text-white shadow-[0_18px_60px_-28px_rgba(15,23,42,0.55)] dark:border-white/10">
@@ -239,14 +238,14 @@
 
                                 <div class="mt-4">
                                     <button
-                                        wire:click="checkoutWithCard({{ $selectedPlanId }})"
+                                        wire:click="initiateCardPayment({{ $selectedPlanId }})"
                                         wire:loading.attr="disabled"
-                                        wire:target="checkoutWithCard({{ $selectedPlanId }})"
+                                        wire:target="initiateCardPayment({{ $selectedPlanId }})"
                                         class="inline-flex w-full items-center justify-center rounded-2xl bg-gray-950 px-5 py-4 text-sm font-bold text-white transition hover:bg-gray-800 disabled:opacity-60 dark:bg-white dark:text-gray-950 dark:hover:bg-gray-100"
                                     >
-                                        <span wire:loading.remove wire:target="checkoutWithCard({{ $selectedPlanId }})">Pagar com cartão</span>
-                                        <span wire:loading wire:target="checkoutWithCard({{ $selectedPlanId }})" class="flex items-center gap-2">
-                                            <x-heroicon-o-arrow-path class="h-4 w-4 animate-spin" /> Abrindo checkout...
+                                        <span wire:loading.remove wire:target="initiateCardPayment({{ $selectedPlanId }})">Pagar com cartão</span>
+                                        <span wire:loading wire:target="initiateCardPayment({{ $selectedPlanId }})" class="flex items-center gap-2">
+                                            <x-heroicon-o-arrow-path class="h-4 w-4 animate-spin" /> Abrindo...
                                         </span>
                                     </button>
                                 </div>
@@ -351,6 +350,97 @@
                     </div>
                 </section>
             </div>
+        @elseif($showCardForm && $selectedPlanId)
+            {{-- ── Checkout Bricks inline (sem redirecionamento, sem login MP) ──── --}}
+            @php $brickPlan = $this->plans->find($selectedPlanId); @endphp
+            <div class="grid gap-6 xl:grid-cols-[0.82fr_1.18fr] xl:items-start">
+
+                <aside class="space-y-4 xl:sticky xl:top-6">
+                    <div class="overflow-hidden rounded-[30px] border border-gray-200/80 bg-gray-950 text-white shadow-[0_18px_60px_-28px_rgba(15,23,42,0.55)] dark:border-white/10">
+                        <div class="bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.26),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0))] px-6 py-7 sm:px-7">
+                            <span class="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.22em] text-amber-200/90">
+                                Plano selecionado
+                            </span>
+                            <h2 class="mt-4 text-3xl font-black tracking-[-0.03em] text-white">
+                                {{ $brickPlan?->name === 'Basico' ? 'Básico' : $brickPlan?->name }}
+                            </h2>
+                            <div class="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                                <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
+                                    <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-white/45">Ciclo</p>
+                                    <p class="mt-2 text-base font-semibold text-white">{{ $brickPlan?->billing_cycle_label }}</p>
+                                </div>
+                                <div class="rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
+                                    <p class="text-[11px] font-bold uppercase tracking-[0.18em] text-white/45">Valor cobrado</p>
+                                    <p class="mt-2 text-base font-semibold text-white">R$ {{ number_format((float) $brickPlan?->price, 2, ',', '.') }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button
+                        wire:click="cancelCardForm"
+                        class="inline-flex w-full items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:border-amber-300 hover:text-amber-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:border-amber-500/40 dark:hover:text-amber-300"
+                    >
+                        ← Trocar plano
+                    </button>
+                </aside>
+
+                <section class="overflow-hidden rounded-[30px] border border-gray-200/80 bg-white/95 shadow-[0_20px_60px_-34px_rgba(15,23,42,0.3)] dark:border-white/10 dark:bg-gray-950/75">
+                    <div class="border-b border-gray-200/80 px-6 py-6 dark:border-white/10 md:px-8">
+                        <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-amber-700 dark:text-amber-300">Pagamento seguro</p>
+                        <h2 class="mt-3 text-2xl font-black tracking-[-0.03em] text-gray-950 dark:text-white">Dados do cartão</h2>
+                        <div class="mt-3 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50/80 px-3 py-1.5 text-xs text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300">
+                            <x-heroicon-o-lock-closed class="h-3 w-3" />
+                            Não é necessário ter conta ou saldo no Mercado Pago
+                        </div>
+                    </div>
+                    <div class="p-6 md:p-8">
+                        {{-- Brick container — wire:ignore impede o Livewire de apagar o form do SDK --}}
+                        <div
+                            x-data="{
+                                controller: null,
+                                async init() {
+                                    await this.loadSDK();
+                                    if (this.controller) { this.controller.unmount(); this.controller = null; }
+                                    const mp = new MercadoPago({{ Js::from(config('services.mercadopago.public_key')) }}, { locale: 'pt-BR' });
+                                    const builder = mp.bricks();
+                                    this.controller = await builder.create('cardPayment', 'saas-card-brick', {
+                                        initialization: {
+                                            amount: {{ Js::from((float) ($brickPlan?->price ?? 0)) }},
+                                        },
+                                        customization: {
+                                            visual: { hideFormTitle: true },
+                                            paymentMethods: { maxInstallments: 12 },
+                                        },
+                                        callbacks: {
+                                            onSubmit: async (formData) => {
+                                                return new Promise((resolve, reject) => {
+                                                    $wire.processCardPayment({{ $selectedPlanId }}, formData)
+                                                        .then(() => resolve())
+                                                        .catch((e) => reject(e));
+                                                });
+                                            },
+                                            onError: (error) => console.error('MP Brick error:', error),
+                                        },
+                                    });
+                                },
+                                loadSDK() {
+                                    return new Promise((resolve) => {
+                                        if (window.MercadoPago) { resolve(); return; }
+                                        const s = document.createElement('script');
+                                        s.src = 'https://sdk.mercadopago.com/js/v2';
+                                        s.onload = resolve;
+                                        document.head.appendChild(s);
+                                    });
+                                },
+                            }"
+                            x-init="init()"
+                        >
+                            <div wire:ignore id="saas-card-brick"></div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
         @else
             <div class="grid gap-6 xl:grid-cols-3">
                 @foreach($this->plans as $plan)
@@ -423,21 +513,20 @@
                         @else
                             <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
                                 <button
-                                    wire:click="checkoutWithCard({{ $plan->id }})"
+                                    wire:click="initiateCardPayment({{ $plan->id }})"
                                     wire:loading.attr="disabled"
-                                    wire:target="checkoutWithCard({{ $plan->id }})"
+                                    wire:target="initiateCardPayment({{ $plan->id }})"
                                     class="w-full rounded-2xl px-5 py-4 text-sm font-semibold leading-6 transition-all
                                         {{ $plan->is_popular
                                             ? 'bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-60'
                                             : 'bg-gray-950 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-950 disabled:opacity-60' }}"
-                                    title="Aceita Visa, Mastercard, Elo, Amex, Hipercard — sem necessidade de conta Mercado Pago"
                                 >
-                                    <span wire:loading.remove wire:target="checkoutWithCard({{ $plan->id }})">
+                                    <span wire:loading.remove wire:target="initiateCardPayment({{ $plan->id }})">
                                         Cartão de crédito / débito
                                     </span>
-                                    <span wire:loading wire:target="checkoutWithCard({{ $plan->id }})" class="flex items-center justify-center gap-2">
+                                    <span wire:loading wire:target="initiateCardPayment({{ $plan->id }})" class="flex items-center justify-center gap-2">
                                         <x-heroicon-o-arrow-path class="h-4 w-4 animate-spin" />
-                                        Abrindo checkout...
+                                        Carregando...
                                     </span>
                                 </button>
 

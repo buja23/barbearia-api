@@ -419,6 +419,93 @@ class PaymentService
     }
 
     /**
+     * Processa pagamento com cartão via Checkout Bricks (sem redirecionamento).
+     * Recebe o cardToken gerado pelo Brick no frontend — o preço SEMPRE vem do banco.
+     */
+    public function createSaasCardPayment(Barbershop $barbershop, SaasPlan $plan, array $formData): array
+    {
+        try {
+            $client = new PaymentClient();
+            $user   = $barbershop->user;
+
+            $externalReference = 'saas:' . $barbershop->id . ':' . $plan->id . ':' . uniqid();
+
+            $paymentData = [
+                'transaction_amount' => (float) $plan->price,
+                'description'        => 'Plano ' . $plan->name . ' - ' . $barbershop->name,
+                'token'              => (string) ($formData['token'] ?? ''),
+                'installments'       => (int)   ($formData['installments'] ?? 1),
+                'payment_method_id'  => (string) ($formData['payment_method_id'] ?? ''),
+                'external_reference' => $externalReference,
+                'notification_url'   => url('/api/webhooks/mercadopago'),
+                'binary_mode'        => true,
+                'statement_descriptor' => 'BARBEARIA APP',
+                'metadata'           => [
+                    'context'       => 'saas',
+                    'barbershop_id' => $barbershop->id,
+                    'saas_plan_id'  => $plan->id,
+                ],
+                'payer' => [
+                    'email'      => $user->email,
+                    'first_name' => $user->name,
+                    'last_name'  => 'Barbershop',
+                ],
+            ];
+
+            if (!empty($formData['issuer_id'])) {
+                $paymentData['issuer_id'] = (int) $formData['issuer_id'];
+            }
+
+            if (!empty($formData['payer']['identification']['number'])) {
+                $paymentData['payer']['identification'] = [
+                    'type'   => $formData['payer']['identification']['type'] ?? 'CPF',
+                    'number' => preg_replace('/\D/', '', $formData['payer']['identification']['number']),
+                ];
+            }
+
+            $idempotencyKey = 'saas_card_' . $barbershop->id . '_' . $plan->id . '_' . uniqid();
+            $requestOptions = new RequestOptions();
+            $requestOptions->setCustomHeaders(['x-idempotency-key' => $idempotencyKey]);
+
+            $payment = $client->create($paymentData, $requestOptions);
+
+            $barbershop->update([
+                'saas_plan_id'    => $plan->id,
+                'saas_payment_id' => (string) $payment->id,
+            ]);
+
+            Log::channel('audit')->info('Pagamento cartão SaaS criado', [
+                'payment_id'    => (string) $payment->id,
+                'barbershop_id' => $barbershop->id,
+                'plan_id'       => $plan->id,
+                'status'        => $payment->status,
+                'status_detail' => $payment->status_detail ?? null,
+            ]);
+
+            return [
+                'success'       => true,
+                'status'        => $payment->status,
+                'payment_id'    => (string) $payment->id,
+                'status_detail' => $payment->status_detail ?? null,
+            ];
+
+        } catch (MPApiException $e) {
+            $response = $e->getApiResponse()->getContent();
+            Log::error('Erro MercadoPago (cartão SaaS): ' . json_encode($response));
+            $msg   = $response['message'] ?? 'Erro desconhecido na API';
+            $cause = collect($response['cause'] ?? [])->pluck('description')->implode(', ');
+            if ($cause) {
+                $msg .= " — $cause";
+            }
+            return ['success' => false, 'error' => $msg];
+
+        } catch (\Exception $e) {
+            Log::error('Erro interno (cartão SaaS): ' . $e->getMessage());
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
      * Gera um pagamento PIX estático usando a chave PIX cadastrada na barbearia.
      * Dinheiro vai diretamente para o dono, sem intermediários.
      */
