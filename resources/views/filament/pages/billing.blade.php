@@ -385,12 +385,46 @@
                 </aside>
 
                 <section class="overflow-hidden rounded-[30px] border border-gray-200/80 bg-white/95 shadow-[0_20px_60px_-34px_rgba(15,23,42,0.3)] dark:border-white/10 dark:bg-gray-950/75">
-                    <div class="border-b border-gray-200/80 px-6 py-6 dark:border-white/10 md:px-8">
-                        <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-amber-700 dark:text-amber-300">Pagamento seguro</p>
-                        <h2 class="mt-3 text-2xl font-black tracking-[-0.03em] text-gray-950 dark:text-white">Dados do cartão</h2>
-                        <div class="mt-3 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50/80 px-3 py-1.5 text-xs text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300">
-                            <x-heroicon-o-lock-closed class="h-3 w-3" />
-                            Não é necessário ter conta ou saldo no Mercado Pago
+                    <div class="border-b border-gray-200/80 px-6 py-7 dark:border-white/10 md:px-8">
+                        <div class="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                            <div>
+                                <div class="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 dark:border-emerald-500/25 dark:bg-emerald-500/10">
+                                    <x-heroicon-o-lock-closed class="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                                    <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-400">Pagamento seguro SSL</span>
+                                </div>
+                                <h2 class="mt-4 text-2xl font-black tracking-[-0.03em] text-gray-950 dark:text-white">Dados do cartão</h2>
+                                <p class="mt-1.5 text-sm text-gray-500 dark:text-gray-400">Crédito ou débito · sem conta no Mercado Pago</p>
+                            </div>
+
+                            {{-- Bandeiras aceitas --}}
+                            <div class="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+                                <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400 dark:text-gray-500">Bandeiras aceitas</span>
+                                <div class="flex items-center gap-2">
+                                    {{-- Visa --}}
+                                    <div class="flex h-9 w-[52px] items-center justify-center rounded-lg border border-[#1a1f71]/15 bg-gradient-to-b from-[#1a1f71] to-[#14185a] shadow-sm">
+                                        <span class="font-sans text-[13px] font-black italic tracking-tight text-white">VISA</span>
+                                    </div>
+                                    {{-- Mastercard --}}
+                                    <div class="flex h-9 w-[52px] items-center justify-center rounded-lg border border-gray-200 bg-white shadow-sm dark:border-white/10 dark:bg-gray-800">
+                                        <div class="flex items-center">
+                                            <div class="h-[18px] w-[18px] rounded-full bg-[#EB001B]"></div>
+                                            <div class="-ml-[9px] h-[18px] w-[18px] rounded-full bg-[#F79E1B] mix-blend-multiply dark:mix-blend-normal dark:opacity-90"></div>
+                                        </div>
+                                    </div>
+                                    {{-- Elo --}}
+                                    <div class="flex h-9 w-[52px] items-center justify-center rounded-lg border border-[#ffcb00]/50 bg-[#ffcb00] shadow-sm">
+                                        <span class="text-[12px] font-black tracking-[-0.03em] text-[#1a1a1a]">elo</span>
+                                    </div>
+                                    {{-- Amex --}}
+                                    <div class="flex h-9 w-[52px] items-center justify-center rounded-lg border border-[#006fcf]/20 bg-gradient-to-b from-[#006fcf] to-[#005ba3] shadow-sm">
+                                        <span class="text-[10px] font-black uppercase tracking-wider text-white">AMEX</span>
+                                    </div>
+                                    {{-- Hipercard --}}
+                                    <div class="flex h-9 w-[52px] items-center justify-center rounded-lg border border-[#be001e]/20 bg-gradient-to-b from-[#be001e] to-[#970017] shadow-sm">
+                                        <span class="text-[9px] font-black uppercase tracking-wide text-white">HIPER</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="p-6 md:p-8">
