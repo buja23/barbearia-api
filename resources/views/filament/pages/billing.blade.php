@@ -412,9 +412,9 @@
                                 controller: null,
                                 brickError: null,
                                 async init() {
+                                    if (this.controller) return;
                                     try {
                                         await this.loadSDK();
-                                        if (this.controller) { this.controller.unmount(); this.controller = null; }
                                         const mp = new MercadoPago({{ Js::from($mpPublicKey) }}, { locale: 'pt-BR' });
                                         const builder = mp.bricks();
                                         this.controller = await builder.create('cardPayment', 'saas-card-brick', {
