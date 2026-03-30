@@ -10,11 +10,12 @@ class SaasPlanSeeder extends Seeder
 {
     public function run(): void
     {
+        // PREÇO DE TESTE — R$ 0,01. Para restaurar produção, volte para: 199.00 / 1074.00 / 1908.00
         $plans = [
             [
                 'name'        => 'Basico',
                 'description' => 'Plano mensal para quem quer flexibilidade sem compromisso longo.',
-                'price'       => 199.00,
+                'price'       => 0.01,
                 'billing_cycle_months' => 1,
                 'features'    => [
                     'Pagamento mensal de R$ 199,00',
@@ -29,7 +30,7 @@ class SaasPlanSeeder extends Seeder
             [
                 'name'        => 'Pro',
                 'description' => 'Plano semestral com desconto para reduzir o custo por mês.',
-                'price'       => 1074.00,
+                'price'       => 0.01,
                 'billing_cycle_months' => 6,
                 'features'    => [
                     'Pagamento semestral de R$ 1.074,00',
@@ -44,7 +45,7 @@ class SaasPlanSeeder extends Seeder
             [
                 'name'        => 'Premium',
                 'description' => 'Plano anual com o maior desconto para maximizar a economia.',
-                'price'       => 1908.00,
+                'price'       => 0.01,
                 'billing_cycle_months' => 12,
                 'features'    => [
                     'Pagamento anual de R$ 1.908,00',
