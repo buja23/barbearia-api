@@ -218,20 +218,36 @@
                     <div class="p-6 md:p-8">
                         <div class="grid gap-5 lg:grid-cols-2">
                             <div class="rounded-[26px] border border-gray-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,1),rgba(248,250,252,0.9))] p-6 dark:border-white/10 dark:bg-white/5">
-                                <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-500">Mais rápido</p>
+                                <p class="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-500">Recomendado</p>
                                 <h3 class="mt-3 text-xl font-black tracking-[-0.02em] text-gray-900 dark:text-white">Pagar com cartão</h3>
                                 <p class="mt-3 text-sm leading-6 text-gray-700 dark:text-gray-300">
-                                    Checkout direto do Mercado Pago.
+                                    Crédito ou débito. Ativação imediata após confirmação.
                                 </p>
-                                <div class="mt-6 space-y-3">
-                                    <div class="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 dark:border-white/10 dark:bg-gray-950/40 dark:text-gray-300">
-                                        Mais rápido.
-                                    </div>
+
+                                {{-- Bandeiras aceitas --}}
+                                <div class="mt-4 flex flex-wrap items-center gap-2">
+                                    @foreach(['VISA', 'MASTER', 'ELO', 'AMEX', 'HIPERCARD'] as $brand)
+                                        <span class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[10px] font-bold tracking-wide text-gray-600 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-gray-300">
+                                            {{ $brand }}
+                                        </span>
+                                    @endforeach
+                                </div>
+
+                                <div class="mt-4 rounded-2xl border border-blue-100 bg-blue-50/80 px-4 py-2.5 text-xs text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300">
+                                    Não é necessário ter conta ou saldo no Mercado Pago.
+                                </div>
+
+                                <div class="mt-4">
                                     <button
                                         wire:click="checkoutWithCard({{ $selectedPlanId }})"
-                                        class="inline-flex w-full items-center justify-center rounded-2xl bg-gray-950 px-5 py-4 text-sm font-bold text-white transition hover:bg-gray-800 dark:bg-white dark:text-gray-950 dark:hover:bg-gray-100"
+                                        wire:loading.attr="disabled"
+                                        wire:target="checkoutWithCard({{ $selectedPlanId }})"
+                                        class="inline-flex w-full items-center justify-center rounded-2xl bg-gray-950 px-5 py-4 text-sm font-bold text-white transition hover:bg-gray-800 disabled:opacity-60 dark:bg-white dark:text-gray-950 dark:hover:bg-gray-100"
                                     >
-                                        Abrir checkout de cartão
+                                        <span wire:loading.remove wire:target="checkoutWithCard({{ $selectedPlanId }})">Pagar com cartão</span>
+                                        <span wire:loading wire:target="checkoutWithCard({{ $selectedPlanId }})" class="flex items-center gap-2">
+                                            <x-heroicon-o-arrow-path class="h-4 w-4 animate-spin" /> Abrindo checkout...
+                                        </span>
                                     </button>
                                 </div>
                             </div>
@@ -414,9 +430,10 @@
                                         {{ $plan->is_popular
                                             ? 'bg-amber-500 hover:bg-amber-600 text-white disabled:opacity-60'
                                             : 'bg-gray-950 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-950 disabled:opacity-60' }}"
+                                    title="Aceita Visa, Mastercard, Elo, Amex, Hipercard — sem necessidade de conta Mercado Pago"
                                 >
                                     <span wire:loading.remove wire:target="checkoutWithCard({{ $plan->id }})">
-                                        Pagar com cartão
+                                        Cartão de crédito / débito
                                     </span>
                                     <span wire:loading wire:target="checkoutWithCard({{ $plan->id }})" class="flex items-center justify-center gap-2">
                                         <x-heroicon-o-arrow-path class="h-4 w-4 animate-spin" />
@@ -438,6 +455,13 @@
                                         Gerando PIX...
                                     </span>
                                 </button>
+                            </div>
+                            {{-- Bandeiras aceitas no cartão --}}
+                            <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                                <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">Cartão aceito:</p>
+                                @foreach(['Visa', 'Master', 'Elo', 'Amex', 'Hiper'] as $b)
+                                    <span class="inline-flex items-center rounded-md border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-bold text-gray-500 dark:border-white/10 dark:bg-white/5 dark:text-gray-400">{{ $b }}</span>
+                                @endforeach
                             </div>
                         @endif
                     </div>
