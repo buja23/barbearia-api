@@ -371,8 +371,6 @@ class PaymentService
                     'excluded_payment_types' => [
                         ['id' => 'ticket'],
                         ['id' => 'atm'],
-                        ['id' => 'account_money'],
-                        ['id' => 'digital_wallet'],
                         ['id' => 'digital_currency'],
                     ],
                     'installments' => 12,

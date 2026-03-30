@@ -456,13 +456,6 @@
                                     </span>
                                 </button>
                             </div>
-                            {{-- Bandeiras aceitas no cartão --}}
-                            <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                                <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">Cartão aceito:</p>
-                                @foreach(['Visa', 'Master', 'Elo', 'Amex', 'Hiper'] as $b)
-                                    <span class="inline-flex items-center rounded-md border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-bold text-gray-500 dark:border-white/10 dark:bg-white/5 dark:text-gray-400">{{ $b }}</span>
-                                @endforeach
-                            </div>
                         @endif
                     </div>
                 @endforeach
