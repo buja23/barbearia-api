@@ -384,17 +384,26 @@ class PaymentService
                 'saas_plan_id' => $plan->id,
             ]);
 
+            // Em sandbox (token TEST-...) usa sandbox_init_point para o checkout de testes.
+            // Em produção (token APP_USR-...) usa init_point.
+            $token = config('services.mercadopago.token', env('MERCADOPAGO_ACCESS_TOKEN', ''));
+            $isSandbox = str_starts_with($token, 'TEST-');
+            $checkoutUrl = $isSandbox
+                ? ($preference->sandbox_init_point ?? $preference->init_point)
+                : $preference->init_point;
+
             Log::channel('audit')->info('Checkout SaaS com cartao criado', [
                 'barbershop_id' => $barbershop->id,
                 'plan_id' => $plan->id,
                 'preference_id' => $preference->id,
                 'external_reference' => $externalReference,
                 'amount' => $plan->price,
+                'sandbox' => $isSandbox,
             ]);
 
             return [
                 'success' => true,
-                'checkout_url' => $preference->init_point,
+                'checkout_url' => $checkoutUrl,
             ];
         } catch (MPApiException $e) {
             $response = $e->getApiResponse()->getContent();
