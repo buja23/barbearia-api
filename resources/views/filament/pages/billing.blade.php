@@ -399,29 +399,30 @@
                             {{-- Bandeiras aceitas --}}
                             <div class="flex shrink-0 flex-col items-start gap-2 sm:items-end">
                                 <span class="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400 dark:text-gray-500">Bandeiras aceitas</span>
-                                <div class="flex items-center gap-2">
+                                <div class="flex items-center gap-1.5">
                                     {{-- Visa --}}
-                                    <div class="flex h-9 w-[52px] items-center justify-center rounded-lg border border-[#1a1f71]/15 bg-gradient-to-b from-[#1a1f71] to-[#14185a] shadow-sm">
-                                        <span class="font-sans text-[13px] font-black italic tracking-tight text-white">VISA</span>
+                                    <div class="flex h-8 w-[50px] items-center justify-center rounded-md shadow-sm" style="background: linear-gradient(160deg,#1a1f71,#0d1248);">
+                                        <span style="font-family:sans-serif;font-size:13px;font-weight:900;font-style:italic;letter-spacing:-0.02em;color:#fff;">VISA</span>
                                     </div>
                                     {{-- Mastercard --}}
-                                    <div class="flex h-9 w-[52px] items-center justify-center rounded-lg border border-gray-200 bg-white shadow-sm dark:border-white/10 dark:bg-gray-800">
-                                        <div class="flex items-center">
-                                            <div class="h-[18px] w-[18px] rounded-full bg-[#EB001B]"></div>
-                                            <div class="-ml-[9px] h-[18px] w-[18px] rounded-full bg-[#F79E1B] mix-blend-multiply dark:mix-blend-normal dark:opacity-90"></div>
-                                        </div>
+                                    <div class="flex h-8 w-[50px] items-center justify-center rounded-md bg-[#252525] shadow-sm">
+                                        <svg width="30" height="19" viewBox="0 0 30 19" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <circle cx="11" cy="9.5" r="9" fill="#EB001B"/>
+                                            <circle cx="19" cy="9.5" r="9" fill="#F79E1B"/>
+                                            <path d="M15 2.8a9 9 0 0 1 0 13.4A9 9 0 0 1 15 2.8z" fill="#FF5F00"/>
+                                        </svg>
                                     </div>
                                     {{-- Elo --}}
-                                    <div class="flex h-9 w-[52px] items-center justify-center rounded-lg border border-[#ffcb00]/50 bg-[#ffcb00] shadow-sm">
-                                        <span class="text-[12px] font-black tracking-[-0.03em] text-[#1a1a1a]">elo</span>
+                                    <div class="flex h-8 w-[50px] items-center justify-center rounded-md shadow-sm" style="background:#ffcb00;">
+                                        <span style="font-size:12px;font-weight:900;letter-spacing:-0.04em;color:#1a1a1a;">elo</span>
                                     </div>
                                     {{-- Amex --}}
-                                    <div class="flex h-9 w-[52px] items-center justify-center rounded-lg border border-[#006fcf]/20 bg-gradient-to-b from-[#006fcf] to-[#005ba3] shadow-sm">
-                                        <span class="text-[10px] font-black uppercase tracking-wider text-white">AMEX</span>
+                                    <div class="flex h-8 w-[50px] items-center justify-center rounded-md shadow-sm" style="background:linear-gradient(160deg,#006fcf,#004fa0);">
+                                        <span style="font-size:10px;font-weight:900;letter-spacing:0.06em;color:#fff;">AMEX</span>
                                     </div>
                                     {{-- Hipercard --}}
-                                    <div class="flex h-9 w-[52px] items-center justify-center rounded-lg border border-[#be001e]/20 bg-gradient-to-b from-[#be001e] to-[#970017] shadow-sm">
-                                        <span class="text-[9px] font-black uppercase tracking-wide text-white">HIPER</span>
+                                    <div class="flex h-8 w-[50px] items-center justify-center rounded-md shadow-sm" style="background:linear-gradient(160deg,#be001e,#8a0015);">
+                                        <span style="font-size:9px;font-weight:900;letter-spacing:0.05em;color:#fff;">HIPER</span>
                                     </div>
                                 </div>
                             </div>
