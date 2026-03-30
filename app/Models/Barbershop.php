@@ -109,7 +109,7 @@ class Barbershop extends Model
      */
     public function isSubscriptionActive(): bool
     {
-        return $this->subscription_status === 'active'
+        return in_array($this->subscription_status, ['active', 'cancelled'])
             && $this->subscription_expires_at !== null
             && $this->subscription_expires_at->isFuture();
     }

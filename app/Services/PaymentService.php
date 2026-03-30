@@ -314,6 +314,9 @@ class PaymentService
             $response = $e->getApiResponse()->getContent();
             Log::error('Erro MercadoPago (SaaS PIX): ' . json_encode($response));
             $msg = $response['message'] ?? 'Erro desconhecido na API';
+            if (str_contains($msg, 'QR render') || str_contains($msg, 'key enabled')) {
+                $msg = 'Sua conta Mercado Pago não possui chave PIX cadastrada. Acesse mercadopago.com.br, registre uma chave PIX e tente novamente. No momento, utilize o pagamento com cartão.';
+            }
             return ['success' => false, 'error' => "Mercado Pago recusou: $msg"];
 
         } catch (\Exception $e) {
@@ -364,7 +367,6 @@ class PaymentService
                 'payment_methods' => [
                     'excluded_payment_methods' => [
                         ['id' => 'pix'],
-                        ['id' => 'account_money'],
                     ],
                     'excluded_payment_types' => [
                         ['id' => 'ticket'],

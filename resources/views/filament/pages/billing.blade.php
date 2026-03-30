@@ -11,9 +11,17 @@
         $trialDays = $barbershop->trialDaysRemaining();
         $monthlyReferencePlan = $this->plans->firstWhere('billing_cycle_months', 1);
 
-        if ($isActive) {
+        if ($isActive && $barbershop->subscription_status === 'cancelled') {
+            $displayPlanName = $barbershop->subscription_plan === 'Basico' ? 'Básico' : $barbershop->subscription_plan;
+            $statusLabel = 'Cancelamento agendado';
+            $statusTitle = 'Plano ' . $displayPlanName . ' · acesso até ' . $barbershop->subscription_expires_at?->format('d/m/Y');
+            $statusBody  = 'Sua assinatura foi cancelada. Você ainda tem acesso completo até a data acima. Assine novamente antes do vencimento para não interromper o serviço.';
+            $statusIcon  = 'heroicon-o-clock';
+            $statusTone  = 'border-orange-200/80 bg-orange-50/85 text-orange-700 dark:border-orange-800/80 dark:bg-orange-900/20 dark:text-orange-300';
+        } elseif ($isActive) {
+            $displayPlanName = $barbershop->subscription_plan === 'Basico' ? 'Básico' : $barbershop->subscription_plan;
             $statusLabel = 'Assinatura ativa';
-            $statusTitle = 'Plano ' . $barbershop->subscription_plan . ' em operação';
+            $statusTitle = 'Plano ' . $displayPlanName . ' em operação';
             $statusBody = 'Sua assinatura vence em ' . $barbershop->subscription_expires_at?->format('d/m/Y') . '.';
             $statusIcon = 'heroicon-o-check-badge';
             $statusTone = 'border-emerald-200/80 bg-emerald-50/85 text-emerald-700 dark:border-emerald-800/80 dark:bg-emerald-900/20 dark:text-emerald-300';
@@ -51,7 +59,7 @@
                         Plano e cobrança
                     </span>
                     <h1 class="mt-6 max-w-3xl text-3xl font-black tracking-[-0.03em] text-gray-950 dark:text-white sm:text-5xl">
-                        Escolha seu plano e finalize a cobrança.
+                        {{ $isActive ? 'Gerencie ou renove seu plano.' : 'Escolha seu plano e finalize a cobrança.' }}
                     </h1>
                     <p class="mt-5 max-w-2xl text-sm leading-7 text-gray-600 dark:text-gray-300 sm:text-base">
                         Mensal para flexibilidade. Semestral e anual para economia.
@@ -59,6 +67,83 @@
                 </div>
             </div>
         </section>
+
+        {{-- ── Gerenciamento de assinatura ─────────────────────────────────── --}}
+        @if($isActive)
+            @if($showCancelConfirm)
+                <section class="overflow-hidden rounded-[30px] border border-rose-200/80 bg-rose-50/80 px-6 py-8 dark:border-rose-500/20 dark:bg-rose-500/5 sm:px-8">
+                    <div class="flex flex-col gap-5 sm:flex-row sm:items-start">
+                        <span class="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-rose-100 dark:bg-rose-500/15">
+                            <x-heroicon-o-exclamation-triangle class="h-5 w-5 text-rose-600 dark:text-rose-400" />
+                        </span>
+                        <div class="flex-1">
+                            <h3 class="text-base font-black text-gray-900 dark:text-white">Cancelar assinatura?</h3>
+                            <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                                Ao cancelar, você <strong>mantém o acesso completo até {{ $barbershop->subscription_expires_at?->format('d/m/Y') }}</strong>.
+                                Após essa data, o acesso será suspenso e será necessário assinar novamente.
+                            </p>
+                            <div class="mt-5 flex flex-col gap-3 sm:flex-row">
+                                <button
+                                    wire:click="cancelSubscription"
+                                    wire:loading.attr="disabled"
+                                    wire:target="cancelSubscription"
+                                    class="inline-flex items-center justify-center rounded-2xl bg-rose-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-60"
+                                >
+                                    <span wire:loading.remove wire:target="cancelSubscription">Confirmar cancelamento</span>
+                                    <span wire:loading wire:target="cancelSubscription" class="flex items-center gap-2">
+                                        <x-heroicon-o-arrow-path class="h-4 w-4 animate-spin" /> Cancelando...
+                                    </span>
+                                </button>
+                                <button
+                                    wire:click="dismissCancel"
+                                    class="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-700 transition hover:border-gray-300 dark:border-white/10 dark:bg-white/5 dark:text-gray-200"
+                                >
+                                    Manter assinatura
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            @else
+                <section class="overflow-hidden rounded-[30px] border border-gray-200/80 bg-white/95 px-6 py-6 shadow-sm dark:border-white/10 dark:bg-gray-950/75 sm:px-8">
+                    <div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p class="text-[11px] font-bold uppercase tracking-[0.22em] text-gray-500">Minha assinatura</p>
+                            <h3 class="mt-2 text-lg font-black tracking-[-0.02em] text-gray-900 dark:text-white">
+                                Plano {{ $barbershop->subscription_plan === 'Basico' ? 'Básico' : $barbershop->subscription_plan }}
+                            </h3>
+                            <div class="mt-3 flex flex-wrap gap-6">
+                                <div>
+                                    <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">Acesso garantido até</p>
+                                    <p class="mt-1 text-sm font-semibold text-gray-800 dark:text-gray-200">
+                                        {{ $barbershop->subscription_expires_at?->format('d/m/Y') }}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">Status</p>
+                                    <p class="mt-1 text-sm font-semibold {{ $barbershop->subscription_status === 'cancelled' ? 'text-orange-600 dark:text-orange-400' : 'text-emerald-600 dark:text-emerald-400' }}">
+                                        {{ $barbershop->subscription_status === 'cancelled' ? 'Cancelada · sem renovação automática' : 'Ativa' }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        @if($barbershop->subscription_status !== 'cancelled')
+                            <button
+                                wire:click="confirmCancel"
+                                class="inline-flex shrink-0 items-center justify-center rounded-2xl border border-rose-200 bg-white px-4 py-3 text-sm font-semibold text-rose-600 transition hover:border-rose-300 hover:bg-rose-50 dark:border-rose-500/30 dark:bg-transparent dark:text-rose-400 dark:hover:bg-rose-500/10"
+                            >
+                                Cancelar assinatura
+                            </button>
+                        @else
+                            <p class="shrink-0 text-sm font-medium text-orange-600 dark:text-orange-400">
+                                Assine novamente abaixo para renovar o acesso.
+                            </p>
+                        @endif
+                    </div>
+                </section>
+            @endif
+        @endif
+        {{-- ──────────────────────────────────────────────────────────────── --}}
 
         @if($paymentId && $pixCopyPaste)
             @php

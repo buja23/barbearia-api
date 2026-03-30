@@ -23,8 +23,9 @@ class BillingPage extends Page
     public ?string $pixQrCode       = null; // base64 image
     public ?string $pixCopyPaste    = null; // copy-paste text
     public ?string $paymentId       = null;
-    public bool    $copied          = false;
-    public bool    $showPixDetails  = false;
+    public bool    $copied             = false;
+    public bool    $showPixDetails     = false;
+    public bool    $showCancelConfirm  = false;
 
     public function mount(): void
     {
@@ -166,5 +167,29 @@ class BillingPage extends Page
     public function markCopied(): void
     {
         $this->copied = true;
+    }
+
+    public function confirmCancel(): void
+    {
+        $this->showCancelConfirm = true;
+    }
+
+    public function dismissCancel(): void
+    {
+        $this->showCancelConfirm = false;
+    }
+
+    public function cancelSubscription(): void
+    {
+        $barbershop = $this->getBarbershop();
+        $expiresAt  = $barbershop->subscription_expires_at?->format('d/m/Y');
+        $barbershop->update(['subscription_status' => 'cancelled']);
+        $this->showCancelConfirm = false;
+        Notification::make()
+            ->title('Assinatura cancelada')
+            ->body("Você mantém acesso completo até {$expiresAt}. Após essa data o acesso será suspenso.")
+            ->warning()
+            ->persistent()
+            ->send();
     }
 }
