@@ -23,13 +23,21 @@ class StoreSubscriptionRequest extends FormRequest
                     $query->where('is_active', true);
                 }),
             ],
+            // pix (padrão) ou card
+            'payment_method' => ['sometimes', 'in:pix,card'],
+            // token gerado pelo MP Bricks no frontend — obrigatório apenas para cartão
+            'card_token'     => ['required_if:payment_method,card', 'string'],
+            // parcelas — padrão 1 (à vista)
+            'installments'   => ['sometimes', 'integer', 'min:1', 'max:12'],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'plan_id.exists' => 'O plano selecionado não existe ou está inativo.',
+            'plan_id.exists'       => 'O plano selecionado não existe ou está inativo.',
+            'card_token.required_if' => 'O token do cartão é obrigatório para pagamento com cartão.',
+            'payment_method.in'    => 'Forma de pagamento inválida. Use "pix" ou "card".',
         ];
     }
 }

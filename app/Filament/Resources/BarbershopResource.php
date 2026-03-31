@@ -171,6 +171,25 @@ class BarbershopResource extends Resource
                             ->placeholder('CPF, CNPJ, e-mail, telefone ou chave aleatória')
                             ->helperText('Esta chave será usada para gerar o QR Code PIX nos agendamentos.'),
                     ])->columns(2),
+
+                Section::make('MercadoPago — Recebimento de Assinaturas')
+                    ->description('Configure as credenciais da sua conta MercadoPago para receber pagamentos de assinaturas (PIX e cartão) diretamente na sua conta.')
+                    ->icon('heroicon-o-credit-card')
+                    ->schema([
+                        TextInput::make('mp_public_key')
+                            ->label('Public Key')
+                            ->placeholder('APP_USR-xxxxxxxx-...')
+                            ->helperText('Encontre em mercadopago.com.br → Credenciais de Produção')
+                            ->maxLength(255),
+
+                        TextInput::make('mp_access_token')
+                            ->label('Access Token (Secreto)')
+                            ->placeholder('APP_USR-0000000000000000-...')
+                            ->helperText('Nunca compartilhe este token. Ele permite cobrar em seu nome.')
+                            ->password()
+                            ->revealable()
+                            ->maxLength(500),
+                    ])->columns(2),
             ]);
     }
 

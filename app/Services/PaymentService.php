@@ -115,15 +115,28 @@ class PaymentService
     }
 
     /**
-     * Gera um pagamento via PIX para ativação de assinatura.
+     * Gera PIX de assinatura usando o token MercadoPago DA BARBEARIA.
+     * O dinheiro vai direto para a conta MP do barbeiro.
      */
     public function createSubscriptionPix(Subscription $subscription): array
     {
         try {
+            $plan       = $subscription->plan;
+            $barbershop = $plan->barbershop;
+            $user       = $subscription->user;
+
+            if (empty($barbershop->mp_access_token)) {
+                return [
+                    'success' => false,
+                    'error'   => 'Esta barbearia ainda não configurou o MercadoPago. Entre em contato com o responsável.',
+                ];
+            }
+
+            // Usa o token da barbearia — dinheiro vai para a conta DELA
+            MercadoPagoConfig::setAccessToken($barbershop->mp_access_token);
             $client = new PaymentClient();
-            $user   = $subscription->user;
-            $plan   = $subscription->plan;
-            $cpf    = $user->cpf ?? env('MERCADOS_PAGO_TEST_CPF', '19119119100');
+
+            $cpf = $user->cpf ?? env('MERCADOS_PAGO_TEST_CPF', '19119119100');
 
             $paymentData = [
                 'transaction_amount' => (float) $plan->price,
@@ -140,9 +153,8 @@ class PaymentService
                 ],
             ];
 
-            $idempotencyKey = 'sub_' . $subscription->id . '_' . uniqid();
-            $requestOptions = new \MercadoPago\Client\Common\RequestOptions();
-            $requestOptions->setCustomHeaders(['x-idempotency-key' => $idempotencyKey]);
+            $requestOptions = new RequestOptions();
+            $requestOptions->setCustomHeaders(['x-idempotency-key' => 'sub_pix_' . $subscription->id . '_' . uniqid()]);
 
             $payment = $client->create($paymentData, $requestOptions);
             $pixData = $payment->point_of_interaction->transaction_data ?? null;
@@ -151,15 +163,13 @@ class PaymentService
                 throw new \Exception('API não retornou dados do Pix.');
             }
 
-            // Salva o external_id para o webhook de renovação encontrar a assinatura
-            $subscription->update([
-                'external_id' => (string) $payment->id,
-            ]);
+            $subscription->update(['external_id' => (string) $payment->id]);
 
             Log::channel('audit')->info('PIX de assinatura criado', [
                 'payment_id'      => (string) $payment->id,
                 'subscription_id' => $subscription->id,
                 'user_id'         => $user->id,
+                'barbershop_id'   => $barbershop->id,
                 'amount'          => $plan->price,
             ]);
 
@@ -169,16 +179,93 @@ class PaymentService
                 'qr_code'    => $pixData->qr_code,
             ];
 
-        } catch (\MercadoPago\Exceptions\MPApiException $e) {
+        } catch (MPApiException $e) {
             $response = $e->getApiResponse()->getContent();
-            Log::error('Erro MercadoPago (Assinatura): ' . json_encode($response));
+            Log::error('Erro MercadoPago (Assinatura PIX): ' . json_encode($response));
             $msg = $response['message'] ?? 'Erro desconhecido na API';
-
             return ['success' => false, 'error' => "Mercado Pago recusou: $msg"];
 
         } catch (\Exception $e) {
             Log::error('Erro interno (Assinatura PIX): ' . $e->getMessage());
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
 
+    /**
+     * Cobra assinatura via CARTÃO usando o token MercadoPago DA BARBEARIA.
+     * Recebe o card_token gerado pelo MP Bricks no frontend.
+     */
+    public function createSubscriptionCard(Subscription $subscription, string $cardToken, int $installments = 1): array
+    {
+        try {
+            $plan       = $subscription->plan;
+            $barbershop = $plan->barbershop;
+            $user       = $subscription->user;
+
+            if (empty($barbershop->mp_access_token)) {
+                return [
+                    'success' => false,
+                    'error'   => 'Esta barbearia ainda não configurou o MercadoPago. Entre em contato com o responsável.',
+                ];
+            }
+
+            MercadoPagoConfig::setAccessToken($barbershop->mp_access_token);
+            $client = new PaymentClient();
+
+            $cpf = $user->cpf ?? env('MERCADOS_PAGO_TEST_CPF', '19119119100');
+
+            $paymentData = [
+                'transaction_amount' => (float) $plan->price,
+                'description'        => 'Assinatura - ' . $plan->name,
+                'installments'       => $installments,
+                'token'              => $cardToken,
+                'payer'              => [
+                    'email'          => $user->email,
+                    'identification' => [
+                        'type'   => 'CPF',
+                        'number' => preg_replace('/\D/', '', $cpf),
+                    ],
+                ],
+            ];
+
+            $requestOptions = new RequestOptions();
+            $requestOptions->setCustomHeaders(['x-idempotency-key' => 'sub_card_' . $subscription->id . '_' . uniqid()]);
+
+            $payment = $client->create($paymentData, $requestOptions);
+
+            $subscription->update(['external_id' => (string) $payment->id]);
+
+            Log::channel('audit')->info('Cartão de assinatura processado', [
+                'payment_id'      => (string) $payment->id,
+                'payment_status'  => $payment->status,
+                'subscription_id' => $subscription->id,
+                'user_id'         => $user->id,
+                'barbershop_id'   => $barbershop->id,
+                'amount'          => $plan->price,
+            ]);
+
+            // MP pode retornar approved, in_process, rejected
+            if ($payment->status === 'rejected') {
+                return [
+                    'success' => false,
+                    'error'   => 'Pagamento recusado pelo banco. Verifique os dados do cartão.',
+                ];
+            }
+
+            return [
+                'success'        => true,
+                'payment_id'     => $payment->id,
+                'payment_status' => $payment->status, // approved | in_process
+            ];
+
+        } catch (MPApiException $e) {
+            $response = $e->getApiResponse()->getContent();
+            Log::error('Erro MercadoPago (Assinatura Cartão): ' . json_encode($response));
+            $msg = $response['message'] ?? 'Erro desconhecido na API';
+            return ['success' => false, 'error' => "Mercado Pago recusou: $msg"];
+
+        } catch (\Exception $e) {
+            Log::error('Erro interno (Assinatura Cartão): ' . $e->getMessage());
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }

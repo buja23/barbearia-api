@@ -30,6 +30,8 @@ class Barbershop extends Model
         'saas_last_payment_id',
         'saas_pix_copy_paste',
         'saas_pix_qr_code',
+        'mp_access_token',
+        'mp_public_key',
     ];
 
     /**
@@ -42,6 +44,7 @@ class Barbershop extends Model
         'saas_payment_id',
         'saas_last_payment_id',
         'pix_key',
+        'mp_access_token',  // nunca expor o token secreto na API
     ];
 
     protected $casts = [

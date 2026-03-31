@@ -31,15 +31,18 @@ class BarbershopController extends Controller
 
         // ✅ Retorna APENAS dados públicos (sem IDs internos, etc)
         return response()->json([
-            'id'       => $barbershop->id,
-            'name'     => $barbershop->name,
-            'slug'     => $barbershop->slug,
-            'logo'     => $logoUrl,
+            'id'            => $barbershop->id,
+            'name'          => $barbershop->name,
+            'slug'          => $barbershop->slug,
+            'logo'          => $logoUrl,
             // ✅ SEGURANÇA: Formatar telefone sem expor o completo
-            'phone'    => $this->maskPhone($barbershop->phone),
-            'address'  => $barbershop->address,
-            'whatsapp' => 'https://wa.me/55' . preg_replace('/[^0-9]/', '', $barbershop->phone),
-            'theme'    => [
+            'phone'         => $this->maskPhone($barbershop->phone),
+            'address'       => $barbershop->address,
+            'whatsapp'      => 'https://wa.me/55' . preg_replace('/[^0-9]/', '', $barbershop->phone),
+            // Chave pública do MP da barbearia — usada pelo app para inicializar o Bricks (form de cartão)
+            // null = barbearia ainda não configurou o MercadoPago
+            'mp_public_key' => $barbershop->mp_public_key ?: null,
+            'theme'         => [
                 'primary'   => '#0f172a',
                 'secondary' => '#fbbf24',
             ],

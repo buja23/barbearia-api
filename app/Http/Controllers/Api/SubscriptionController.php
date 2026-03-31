@@ -31,44 +31,43 @@ class SubscriptionController extends Controller
 
     /**
      * Cria uma nova assinatura para o usuário.
-     * - Plano gratuito (price = 0) → ativa imediatamente.
-     * - Plano pago → cria em status pending e gera PIX para pagamento.
+     *
+     * - Plano gratuito (price = 0)  → ativa imediatamente, sem pagamento.
+     * - Plano pago + payment_method = "pix"  → gera PIX na conta do barbeiro.
+     * - Plano pago + payment_method = "card" → cobra via cartão na conta do barbeiro.
      */
     public function store(StoreSubscriptionRequest $request)
     {
         $user = $request->user();
 
-        // Impede múltiplas assinaturas ativas
         if ($user->activeSubscription) {
             return response()->json([
                 'message' => 'Você já possui uma assinatura ativa.',
             ], 422);
         }
 
-        // Busca o plano pelo ID — a validação do Request já garante que
-        // o plano existe, está ativo e pertence à barbearia informada.
         $plan = Plan::with('barbershop')
             ->where('id', $request->plan_id)
             ->where('is_active', true)
             ->firstOrFail();
 
-        return DB::transaction(function () use ($user, $plan) {
-            $isFree = (float) $plan->price === 0.0;
+        return DB::transaction(function () use ($user, $plan, $request) {
+            $isFree        = (float) $plan->price === 0.0;
+            $paymentMethod = $request->input('payment_method', 'pix'); // pix é padrão
 
-            // Vincula o cliente à barbearia caso ainda não esteja vinculado
-            if (! $user->barbershop_id) {
+            if (!$user->barbershop_id) {
                 $user->update(['barbershop_id' => $plan->barbershop_id]);
             }
 
             $subscription = Subscription::create([
-                'user_id'          => $user->id,
-                'plan_id'          => $plan->id,
-                'barbershop_id'    => $plan->barbershop_id,
-                'starts_at'        => now(),
-                'expires_at'       => now()->addMonth(),
-                'status'           => $isFree ? 'active' : 'pending',
-                'uses_this_month'  => 0,
-                'remaining_cuts'   => $plan->cuts_per_month ?? 0,
+                'user_id'         => $user->id,
+                'plan_id'         => $plan->id,
+                'barbershop_id'   => $plan->barbershop_id,
+                'starts_at'       => now(),
+                'expires_at'      => now()->addMonth(),
+                'status'          => $isFree ? 'active' : 'pending',
+                'uses_this_month' => 0,
+                'remaining_cuts'  => $plan->cuts_per_month ?? 0,
             ]);
 
             if ($isFree) {
@@ -78,11 +77,38 @@ class SubscriptionController extends Controller
                 ], 201);
             }
 
-            // Plano pago: gera PIX
-            $result = (new PaymentService())->createSubscriptionPix($subscription);
+            $paymentService = new PaymentService();
+
+            // --- CARTÃO ---
+            if ($paymentMethod === 'card') {
+                $result = $paymentService->createSubscriptionCard(
+                    $subscription,
+                    $request->input('card_token'),
+                    (int) $request->input('installments', 1)
+                );
+
+                if (!$result['success']) {
+                    throw new \Exception($result['error'] ?? 'Falha ao processar cartão.');
+                }
+
+                // Se aprovado imediatamente, ativa a assinatura
+                if (($result['payment_status'] ?? '') === 'approved') {
+                    $subscription->update(['status' => 'active']);
+                }
+
+                return response()->json([
+                    'message'        => 'Pagamento processado! Sua assinatura está ' .
+                        (($result['payment_status'] ?? '') === 'approved' ? 'ativa.' : 'em análise.'),
+                    'subscription'   => $subscription->fresh()->load('plan'),
+                    'payment_status' => $result['payment_status'],
+                ], 201);
+            }
+
+            // --- PIX (padrão) ---
+            $result = $paymentService->createSubscriptionPix($subscription);
 
             if (!$result['success']) {
-                throw new \Exception($result['error'] ?? 'Falha ao gerar pagamento.');
+                throw new \Exception($result['error'] ?? 'Falha ao gerar PIX.');
             }
 
             return response()->json([

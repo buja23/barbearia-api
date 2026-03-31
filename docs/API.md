@@ -70,6 +70,8 @@ Registra um novo usuário. O `role` é sempre forçado para `client`.
 
 **Resposta `200 OK`**
 
+> ⚠️ O controller retorna `200` (não `201`) mesmo no registro.
+
 ```json
 {
   "access_token": "1|abc...",
@@ -101,7 +103,11 @@ Autentica um usuário existente.
 }
 ```
 
-**Erro `422`**: Credenciais incorretas.
+**Erro `422`**: Credenciais incorretas — o erro vem no campo `email`, não no campo `message`:
+
+```json
+{ "errors": { "email": ["As credenciais fornecidas estão incorretas."] } }
+```
 
 ---
 
@@ -261,6 +267,8 @@ Lista os barbeiros **ativos** de uma barbearia. Retorna apenas campos públicos.
 ]
 ```
 
+> ⚠️ O campo `avatar` retorna o caminho relativo (ex: `avatars/carlos.jpg`), não a URL completa. Construa a URL no app: `https://<dominio>/storage/avatars/carlos.jpg`.
+
 ---
 
 ## 6. Planos
@@ -269,17 +277,22 @@ Lista os barbeiros **ativos** de uma barbearia. Retorna apenas campos públicos.
 
 Lista os planos de assinatura **ativos** de uma barbearia.
 
+> ⚠️ Retorna **todos os campos** do model `Plan` (sem filtro de colunas no controller). Os campos principais são:
+
 **Resposta `200 OK`**
 
 ```json
 [
   {
     "id": 1,
+    "barbershop_id": 1,
     "name": "Plano Bronze",
     "description": "2 cortes por mês",
     "price": "49.90",
     "cuts_per_month": 2,
-    "is_active": true
+    "is_active": true,
+    "created_at": "2026-03-01T00:00:00.000000Z",
+    "updated_at": "2026-03-01T00:00:00.000000Z"
   }
 ]
 ```
@@ -305,6 +318,8 @@ Retorna os horários disponíveis para agendamento de um barbeiro em uma data es
 ```json
 ["09:00", "09:45", "10:30", "14:00", "15:30"]
 ```
+
+> Array de strings `"HH:mm"`. Intervalos de 15 minutos a partir do horário de abertura até `(fechamento - duração do serviço)`.
 
 ---
 
@@ -345,12 +360,12 @@ Cria um novo agendamento. A lógica verifica automaticamente se o usuário possu
 
 **Body (JSON)**
 
-| Campo | Tipo | Obrigatório |
-|---|---|---|
-| `barber_id` | integer | ✅ |
-| `service_id` | integer | ✅ |
-| `scheduled_at` | datetime (ISO 8601) | ✅ |
-| `client_phone` | string | ❌ |
+| Campo | Tipo | Obrigatório | Observação |
+|---|---|---|---|
+| `barber_id` | integer | ✅ | deve pertencer à barbearia |
+| `service_id` | integer | ✅ | deve pertencer à barbearia |
+| `scheduled_at` | datetime (ISO 8601) | ✅ | ex: `2026-04-15T10:00:00` |
+| `client_phone` | string | ❌ | se omitido usa o telefone cadastrado do usuário |
 
 **Resposta `201 Created`**
 
@@ -393,13 +408,16 @@ Retorna a assinatura ativa do usuário com detalhes do plano.
 ```json
 {
   "id": 3,
+  "user_id": 1,
   "plan_id": 1,
+  "barbershop_id": 1,
   "status": "active",
-  "starts_at": "2026-03-01",
-  "expires_at": "2026-04-01",
+  "starts_at": "2026-03-01T00:00:00.000000Z",
+  "expires_at": "2026-04-01T00:00:00.000000Z",
   "uses_this_month": 1,
   "remaining_cuts": 2,
   "plan": {
+    "id": 1,
     "name": "Plano Bronze",
     "cuts_per_month": 2,
     "price": "49.90"
@@ -407,7 +425,7 @@ Retorna a assinatura ativa do usuário com detalhes do plano.
 }
 ```
 
-**Erro `404`**: Nenhuma assinatura ativa.
+**Erro `404`**: `{ "message": "Nenhuma assinatura ativa." }`
 
 ---
 
@@ -460,7 +478,7 @@ Cancela a assinatura ativa do usuário (altera status para `canceled`).
 { "message": "Assinatura cancelada com sucesso." }
 ```
 
-**Erro `404`**: Nenhuma assinatura ativa para cancelar.
+**Erro `404`**: `{ "message": "Nenhuma assinatura ativa para cancelar." }`
 
 ---
 
