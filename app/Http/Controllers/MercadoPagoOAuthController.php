@@ -12,11 +12,14 @@ class MercadoPagoOAuthController extends Controller
 {
     /**
      * Redireciona o barbeiro para a página de autorização do MercadoPago.
-     * Só pode ser acessado por usuários autenticados no painel admin (Filament).
      */
     public function connect(Request $request)
     {
-        $user       = $request->user();
+        if (!auth()->check()) {
+            return redirect('/admin/login');
+        }
+
+        $user       = auth()->user();
         $barbershop = Barbershop::where('user_id', $user->id)->firstOrFail();
 
         // Gera estado aleatório para proteção CSRF
@@ -102,7 +105,11 @@ class MercadoPagoOAuthController extends Controller
      */
     public function disconnect(Request $request)
     {
-        $user       = $request->user();
+        if (!auth()->check()) {
+            return redirect('/admin/login');
+        }
+
+        $user       = auth()->user();
         $barbershop = Barbershop::where('user_id', $user->id)->firstOrFail();
 
         $barbershop->update([

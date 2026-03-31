@@ -18,16 +18,14 @@ Route::get('/b/{slug}', function ($slug) {
 })->name('barbershop.public');
 
 // --- MercadoPago OAuth ---
-// Somente usuários autenticados no painel admin podem iniciar o fluxo
-Route::middleware(['auth'])->group(function () {
-    Route::get('/mp/connect', [MercadoPagoOAuthController::class, 'connect'])
-        ->name('mp.connect');
+// Auth é verificada dentro do controller (redireciona para /admin se não autenticado)
+Route::get('/mp/connect', [MercadoPagoOAuthController::class, 'connect'])
+    ->name('mp.connect');
 
-    Route::get('/mp/disconnect', [MercadoPagoOAuthController::class, 'disconnect'])
-        ->name('mp.disconnect');
-});
+Route::get('/mp/disconnect', [MercadoPagoOAuthController::class, 'disconnect'])
+    ->name('mp.disconnect');
 
-// O callback NÃO tem middleware auth pois o MP redireciona externamente
+// O callback não tem auth pois o MP redireciona externamente
 // A segurança é garantida pelo parâmetro `state` (CSRF)
 Route::get('/mp/callback', [MercadoPagoOAuthController::class, 'callback'])
     ->name('mp.callback');
