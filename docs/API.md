@@ -215,12 +215,15 @@ Retorna informações públicas da barbearia. **Dados sensíveis são filtrados*
   "phone": "(11) 99999-9999",
   "address": "Rua das Pedras, 123",
   "whatsapp": "https://wa.me/5511999999999",
+  "mp_public_key": "APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
   "theme": {
     "primary": "#0f172a",
     "secondary": "#fbbf24"
   }
 }
 ```
+
+> ⚠️ `mp_public_key` é a chave pública MercadoPago **da barbearia**. Use-a para inicializar o MP Bricks (form de cartão). Se vier `null`, a barbearia ainda não configurou o MP — desabilite a opção de cartão no app.
 
 **Erros**: `400` slug inválido · `404` barbearia não encontrada.
 
@@ -433,38 +436,73 @@ Retorna a assinatura ativa do usuário com detalhes do plano.
 
 Cria uma nova assinatura. Impede múltiplas assinaturas ativas simultaneamente.
 
-- **Plano gratuito (`price = 0`)** → ativado imediatamente com status `active`.
-- **Plano pago** → criado com status `pending` + geração de código PIX via MercadoPago.
+O pagamento vai **diretamente para a conta MercadoPago da barbearia** (não passa pelo SaaS).
+
+**Regras por cenário:**
+- **Plano gratuito (`price = 0`)** → ativado imediatamente, sem pagamento.
+- **Plano pago + `payment_method = "pix"`** → gera PIX na conta MP da barbearia. Assinatura fica `pending` até o webhook confirmar.
+- **Plano pago + `payment_method = "card"`** → cobra no cartão via token MP Bricks. Se aprovado imediatamente, já ativa (`active`). Se em análise, fica `pending` até webhook.
 
 **Body (JSON)**
 
-| Campo | Tipo | Obrigatório |
-|---|---|---|
-| `plan_id` | integer | ✅ |
+| Campo | Tipo | Obrigatório | Observação |
+|---|---|---|---|
+| `plan_id` | integer | ✅ | deve ser plano ativo da barbearia |
+| `payment_method` | string | ❌ | `"pix"` (padrão) ou `"card"` |
+| `card_token` | string | ✅ se `card` | token gerado pelo MP Bricks no frontend |
+| `installments` | integer | ❌ | parcelas, padrão `1` (máx. 12) |
 
-**Resposta `201 Created` — Plano gratuito**
+**Resposta `201` — Plano gratuito**
 
 ```json
 {
   "message": "Assinatura ativada com sucesso!",
-  "subscription": { ... }
+  "subscription": { "id": 3, "status": "active", "plan": { ... } }
 }
 ```
 
-**Resposta `201 Created` — Plano pago**
+**Resposta `201` — PIX**
 
 ```json
 {
   "message": "Assinatura criada. Efetue o pagamento via PIX para ativar.",
-  "subscription": { "id": 4, "status": "pending", ... },
+  "subscription": { "id": 4, "status": "pending", "plan": { ... } },
   "pix": {
-    "copy_paste": "00020126...",
+    "copy_paste": "00020126330014br.gov.bcb.pix...",
     "payment_id": "12345678"
   }
 }
 ```
 
-**Erro `422`**: Usuário já possui assinatura ativa.
+> `copy_paste` é o código Pix Copia e Cola. Para exibir QR Code visual, gere a imagem no app a partir desta string (ex: biblioteca `qrcode`).
+
+**Resposta `201` — Cartão aprovado imediatamente**
+
+```json
+{
+  "message": "Pagamento processado! Sua assinatura está ativa.",
+  "subscription": { "id": 4, "status": "active", "plan": { ... } },
+  "payment_status": "approved"
+}
+```
+
+**Resposta `201` — Cartão em análise**
+
+```json
+{
+  "message": "Pagamento processado! Sua assinatura está em análise.",
+  "subscription": { "id": 4, "status": "pending", "plan": { ... } },
+  "payment_status": "in_process"
+}
+```
+
+**Erros**
+
+| Código | Motivo |
+|---|---|
+| `422` | Usuário já possui assinatura ativa |
+| `422` | `card_token` ausente quando `payment_method = "card"` |
+| `500` | Barbearia sem MP configurado ou recusa do banco — trate com mensagem genérica |
 
 ---
 
@@ -518,6 +556,21 @@ x-request-id: <uuid>
 | `phone` | string (encrypted) | Telefone criptografado |
 | `barbershop_id` | int\|null | Barbearia vinculada (cliente) |
 
+### Barbershop (Barbearia) — campos públicos
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `id` | int | ID único |
+| `name` | string | Nome da barbearia |
+| `slug` | string | Identificador URL |
+| `logo` | string\|null | URL absoluta do logo |
+| `phone` | string | Telefone mascarado |
+| `address` | string | Endereço |
+| `whatsapp` | string | Link `https://wa.me/55...` |
+| `mp_public_key` | string\|null | Chave pública MP da barbearia para Bricks |
+
+> Campos `mp_access_token`, `pix_key` e outros dados sensíveis **nunca aparecem** na API.
+
 ### Appointment (Agendamento)
 
 | Campo | Tipo | Descrição |
@@ -526,6 +579,73 @@ x-request-id: <uuid>
 | `total_price` | decimal | Valor cobrado (0 = via assinatura) |
 | `payment_method` | string | `pix`, null |
 | `notes` | string\|null | Ex: "Pago pelo plano Bronze" |
+
+### Subscription (Assinatura)
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `status` | enum | `active`, `pending`, `canceled`, `expired` |
+| `uses_this_month` | int | Cortes usados no mês corrente |
+| `remaining_cuts` | int | Cortes restantes (valor armazenado no banco) |
+| `expires_at` | datetime | Data de expiração da assinatura |
+
+---
+
+## Fluxo de Pagamento com Cartão (MP Bricks)
+
+O app usa o **MP Bricks** (SDK MercadoPago) para capturar os dados do cartão com segurança.  
+A chave pública usada é a **da barbearia** (`mp_public_key`), então o pagamento vai direto para a conta dela.
+
+### Passo a passo
+
+**1. Buscar a barbearia**
+```
+GET /api/{slug}
+→ guardar mp_public_key da resposta
+```
+
+**2. Buscar o plano escolhido**
+```
+GET /api/{slug}/plans
+→ selecionar o plano, guardar plan.price e plan.id
+```
+
+**3. Inicializar o MP Bricks no frontend**
+```js
+const mp = new MercadoPago(mp_public_key, { locale: 'pt-BR' });
+const bricksBuilder = mp.bricks();
+
+await bricksBuilder.create('cardPayment', 'container-id', {
+  initialization: { amount: plan.price },
+  callbacks: {
+    onSubmit: async ({ formData }) => {
+      // formData.token    → card_token para enviar ao backend
+      // formData.installments → parcelas selecionadas
+    }
+  }
+});
+```
+
+**4. Enviar ao backend**
+```
+POST /api/subscribe
+Authorization: Bearer <token>
+
+{
+  "plan_id": 1,
+  "payment_method": "card",
+  "card_token": "<token gerado pelo Bricks>",
+  "installments": 1
+}
+```
+
+**5. Tratar a resposta**
+
+| `payment_status` | O que mostrar |
+|---|---|
+| `approved` | "Assinatura ativa! Bem-vindo." |
+| `in_process` | "Pagamento em análise. Você será notificado." |
+| ausente (PIX) | Mostrar código PIX para o usuário copiar |
 
 ---
 

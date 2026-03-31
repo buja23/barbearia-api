@@ -173,23 +173,45 @@ class BarbershopResource extends Resource
                     ])->columns(2),
 
                 Section::make('MercadoPago — Recebimento de Assinaturas')
-                    ->description('Configure as credenciais da sua conta MercadoPago para receber pagamentos de assinaturas (PIX e cartão) diretamente na sua conta.')
+                    ->description('Conecte sua conta MercadoPago para receber pagamentos de assinaturas (PIX e cartão) diretamente na sua conta.')
                     ->icon('heroicon-o-credit-card')
                     ->schema([
-                        TextInput::make('mp_public_key')
-                            ->label('Public Key')
-                            ->placeholder('APP_USR-xxxxxxxx-...')
-                            ->helperText('Encontre em mercadopago.com.br → Credenciais de Produção')
-                            ->maxLength(255),
+                        \Filament\Forms\Components\Placeholder::make('mp_status')
+                            ->label('Status da Conexão')
+                            ->content(function ($record): \Illuminate\Support\HtmlString {
+                                if ($record && $record->mp_access_token) {
+                                    return new \Illuminate\Support\HtmlString(
+                                        '<span class="inline-flex items-center gap-1 text-success-600 font-semibold">'
+                                        . '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.707a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>'
+                                        . ' Conta MercadoPago conectada</span>'
+                                    );
+                                }
+                                return new \Illuminate\Support\HtmlString(
+                                    '<span class="inline-flex items-center gap-1 text-warning-600 font-semibold">'
+                                    . '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>'
+                                    . ' Não conectado — clientes não podem pagar pela assinatura</span>'
+                                );
+                            }),
 
-                        TextInput::make('mp_access_token')
-                            ->label('Access Token (Secreto)')
-                            ->placeholder('APP_USR-0000000000000000-...')
-                            ->helperText('Nunca compartilhe este token. Ele permite cobrar em seu nome.')
-                            ->password()
-                            ->revealable()
-                            ->maxLength(500),
-                    ])->columns(2),
+                        \Filament\Forms\Components\Actions::make([
+                            \Filament\Forms\Components\Actions\Action::make('connect_mp')
+                                ->label('Conectar MercadoPago')
+                                ->icon('heroicon-o-arrow-top-right-on-square')
+                                ->color('success')
+                                ->url(route('mp.connect'))
+                                ->visible(fn ($record) => $record && !$record->mp_access_token),
+
+                            \Filament\Forms\Components\Actions\Action::make('disconnect_mp')
+                                ->label('Desconectar MercadoPago')
+                                ->icon('heroicon-o-x-circle')
+                                ->color('danger')
+                                ->requiresConfirmation()
+                                ->modalHeading('Desconectar MercadoPago?')
+                                ->modalDescription('Após desconectar, clientes não poderão pagar assinaturas até você reconectar a conta.')
+                                ->url(route('mp.disconnect'))
+                                ->visible(fn ($record) => $record && $record->mp_access_token),
+                        ]),
+                    ]),
             ]);
     }
 

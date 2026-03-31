@@ -39,6 +39,9 @@ return [
         'token'          => env('MERCADOPAGO_ACCESS_TOKEN'),
         'public_key'     => env('MERCADOPAGO_PUBLIC_KEY'),
         'webhook_secret' => env('MERCADO_PAGO_WEBHOOK_SECRET'),
+        // Credenciais do app OAuth do SaaS (você cria UMA vez no MP Developers)
+        'app_id'         => env('MP_APP_ID'),
+        'app_secret'     => env('MP_APP_SECRET'),
     ],
 
 ];

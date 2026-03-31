@@ -32,6 +32,7 @@ class Barbershop extends Model
         'saas_pix_qr_code',
         'mp_access_token',
         'mp_public_key',
+        'mp_oauth_state',
     ];
 
     /**

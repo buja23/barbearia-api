@@ -85,8 +85,17 @@ O token é obtido no login ou registro.
 | Método | Rota | Auth | Descrição |
 |---|---|---|---|
 | `GET` | `/api/user/subscription` | 🔒 | Assinatura ativa do usuário |
-| `POST` | `/api/subscribe` | 🔒 | Cria nova assinatura |
+| `POST` | `/api/subscribe` | 🔒 | Cria nova assinatura (PIX ou cartão) |
 | `POST` | `/api/subscribe/cancel` | 🔒 | Cancela assinatura ativa |
+
+**Body de `POST /api/subscribe`**
+
+| Campo | Tipo | Obrigatório | Observação |
+|---|---|---|---|
+| `plan_id` | integer | ✅ | |
+| `payment_method` | string | ❌ | `"pix"` (padrão) ou `"card"` |
+| `card_token` | string | ✅ se `card` | gerado pelo MP Bricks |
+| `installments` | integer | ❌ | parcelas, padrão 1 |
 
 ---
 
@@ -103,17 +112,29 @@ O token é obtido no login ou registro.
    └─ se não tem saldo / sem assinatura  → total_price = preço do serviço
 ```
 
-### Fluxo de Assinatura (PIX)
+### Fluxo de Assinatura (PIX ou Cartão)
 
 ```
-1. GET /api/{slug}/plans             → app mostra planos disponíveis
-2. POST /api/subscribe               → app cria assinatura
-   └─ plano pago → retorna código PIX (copy-paste + QR code)
-   └─ plano gratuito → ativa imediatamente (status: active)
-3. Usuário paga o PIX no banco
-4. MercadoPago chama /api/webhooks/mercadopago
-5. API ativa a assinatura automaticamente (status: active)
+1. GET /api/{slug}                → pegar mp_public_key da barbearia
+2. GET /api/{slug}/plans          → app mostra planos disponíveis
+3. Usuário escolhe plano + forma de pagamento
+
+--- PIX ---
+4. POST /api/subscribe            → body: { plan_id, payment_method: "pix" }
+   └─ retorna pix.copy_paste (string Pix Copia e Cola)
+5. App exibe o código para o usuário pagar
+6. MercadoPago chama /api/webhooks/mercadopago
+7. API ativa a assinatura automaticamente (status: active)
+
+--- CARTÃO ---
+4. App inicializa MP Bricks com mp_public_key (captura dados do cartão)
+5. Bricks gera card_token no callback onSubmit
+6. POST /api/subscribe            → body: { plan_id, payment_method: "card", card_token, installments }
+   └─ approved   → assinatura já ativa
+   └─ in_process → assinatura pending, aguardar webhook
 ```
+
+> O dinheiro vai **direto para a conta MercadoPago da barbearia**.
 
 ---
 
@@ -174,9 +195,15 @@ O token é obtido no login ou registro.
    ["09:00", "09:45", "10:30"]
    ```
 
-6. **Assinatura PIX** é criada com `status: "pending"` — só ativa após o webhook do MercadoPago ser disparado. O app deve informar o cliente para aguardar.
+6. **Assinatura PIX** é criada com `status: "pending"` — só ativa após o webhook do MercadoPago. — Assinatura paga por **cartão aprovado** já fica `status: "active"` imediatamente.
 
-7. **Cancelamento de agendamento via assinatura** (`total_price = 0`) automaticamente devolve 1 corte ao saldo (`uses_this_month--`).
+7. **`mp_public_key` nulo** em `GET /api/{slug}` significa que a barbearia ainda não configurou o MercadoPago no painel. Desabilite a opção de cartão no app quando isso ocorrer.
+
+8. **Cartão**: o app inicializa o MP Bricks com `mp_public_key` da barbearia. O `card_token` é gerado no callback `onSubmit` do Bricks e enviado ao backend.
+
+9. **O dinheiro vai direto para a conta MP da barbearia** — o SaaS não intermedia.
+
+10. **Cancelamento de agendamento via assinatura** (`total_price = 0`) devolve 1 corte ao saldo (`uses_this_month--`) automaticamente.
 
 ---
 
