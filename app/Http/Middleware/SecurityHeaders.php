@@ -18,10 +18,10 @@ class SecurityHeaders
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 
-        // CSP: permite o SDK do Mercado Pago e CDNs usados no Filament
+        // CSP: unsafe-eval é obrigatório para Alpine.js v3 (Filament usa internamente)
         $response->headers->set('Content-Security-Policy',
             "default-src 'self'; " .
-            "script-src 'self' 'unsafe-inline' https://sdk.mercadopago.com https://cdn.jsdelivr.net; " .
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://sdk.mercadopago.com https://cdn.jsdelivr.net; " .
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " .
             "font-src 'self' https://fonts.gstatic.com data:; " .
             "img-src 'self' data: blob: https:; " .
