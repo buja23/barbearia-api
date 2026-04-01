@@ -596,7 +596,7 @@ x-request-id: <uuid>
 O app usa o **MP Bricks** (SDK MercadoPago) para capturar os dados do cartão com segurança.  
 A chave pública usada é a **da barbearia** (`mp_public_key`), então o pagamento vai direto para a conta dela.
 
-### Passo a passo
+### Passo a passo completo — Cartão
 
 **1. Buscar a barbearia**
 ```
@@ -604,48 +604,158 @@ GET /api/{slug}
 → guardar mp_public_key da resposta
 ```
 
-**2. Buscar o plano escolhido**
+> Se `mp_public_key` vier `null`, a barbearia ainda não configurou o MP. **Oculte a opção de cartão**, ofereça só PIX.
+
+**2. Buscar os planos**
 ```
 GET /api/{slug}/plans
 → selecionar o plano, guardar plan.price e plan.id
 ```
 
-**3. Inicializar o MP Bricks no frontend**
+**3. Carregar o SDK do MercadoPago no HTML**
+```html
+<script src="https://sdk.mercadopago.com/js/v2"></script>
+```
+
+**4. Inicializar o MP Bricks**
 ```js
 const mp = new MercadoPago(mp_public_key, { locale: 'pt-BR' });
 const bricksBuilder = mp.bricks();
 
-await bricksBuilder.create('cardPayment', 'container-id', {
-  initialization: { amount: plan.price },
+await bricksBuilder.create('cardPayment', 'brick-container', {
+  initialization: {
+    amount: parseFloat(plan.price), // ex: 49.90
+  },
+  customization: {
+    paymentMethods: {
+      minInstallments: 1,
+      maxInstallments: 12,
+    },
+  },
   callbacks: {
+    onReady: () => {
+      // Bricks carregado — esconder loading
+    },
     onSubmit: async ({ formData }) => {
-      // formData.token    → card_token para enviar ao backend
-      // formData.installments → parcelas selecionadas
-    }
-  }
+      // formData.token        → card_token
+      // formData.installments → número de parcelas
+      // formData.payment_method_id → bandeira (ex: "visa")
+      await assinarComCartao(formData.token, formData.installments);
+    },
+    onError: (error) => {
+      console.error('Bricks error:', error);
+    },
+  },
 });
 ```
 
-**4. Enviar ao backend**
-```
-POST /api/subscribe
-Authorization: Bearer <token>
+**5. Enviar ao backend**
+```js
+async function assinarComCartao(cardToken, installments) {
+  const res = await fetch('/api/subscribe', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + userToken,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      plan_id: plan.id,
+      payment_method: 'card',
+      card_token: cardToken,
+      installments: installments,
+    }),
+  });
 
-{
-  "plan_id": 1,
-  "payment_method": "card",
-  "card_token": "<token gerado pelo Bricks>",
-  "installments": 1
+  const data = await res.json();
+
+  if (!res.ok) {
+    // 422 → já tem assinatura / token inválido
+    // 500 → recusa do banco ou MP sem credenciais configuradas
+    mostrarErro(data.message ?? 'Erro ao processar pagamento.');
+    return;
+  }
+
+  if (data.payment_status === 'approved') {
+    mostrarSucesso('Assinatura ativa! Bem-vindo.');
+  } else {
+    mostrarAviso('Pagamento em análise. Você será notificado em breve.');
+  }
 }
 ```
 
-**5. Tratar a resposta**
+**6. Tratar respostas**
 
-| `payment_status` | O que mostrar |
-|---|---|
-| `approved` | "Assinatura ativa! Bem-vindo." |
-| `in_process` | "Pagamento em análise. Você será notificado." |
-| ausente (PIX) | Mostrar código PIX para o usuário copiar |
+| Código HTTP | `payment_status` | O que mostrar |
+|---|---|---|
+| `201` | `approved` | "Assinatura ativa! Bem-vindo." |
+| `201` | `in_process` | "Pagamento em análise. Você será notificado." |
+| `422` | — | Mensagem do campo `message` (ex: "Você já possui assinatura ativa") |
+| `500` | — | "Falha ao processar pagamento. Tente novamente ou use PIX." |
+
+---
+
+## Fluxo de Pagamento com PIX
+
+### Passo a passo completo — PIX
+
+**1. Enviar ao backend**
+```js
+const res = await fetch('/api/subscribe', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer ' + userToken,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    plan_id: plan.id,
+    payment_method: 'pix', // ou omitir — pix é o padrão
+  }),
+});
+
+const data = await res.json();
+```
+
+**2. Exibir o código PIX**
+```js
+// data.pix.copy_paste → string longa para "Copiar código"
+// Gere o QR Code visualmente no app a partir dessa string
+
+const codigoPix = data.pix.copy_paste;
+const paymentId = data.pix.payment_id; // guarde para consultas futuras
+```
+
+**Gerar QR Code no app (exemplo com biblioteca `qrcode`):**
+```js
+import QRCode from 'qrcode';
+
+const qrDataUrl = await QRCode.toDataURL(codigoPix);
+// <img src={qrDataUrl} />
+```
+
+**3. Aguardar ativação**
+
+A assinatura fica com `status: "pending"` até o webhook do MercadoPago confirmar o pagamento. O app deve:
+
+```js
+// Polling simples — consulta a cada 5 segundos por até 5 minutos
+let tentativas = 0;
+const intervalo = setInterval(async () => {
+  tentativas++;
+  const sub = await fetch('/api/user/subscription', {
+    headers: { 'Authorization': 'Bearer ' + userToken }
+  }).then(r => r.json());
+
+  if (sub.status === 'active') {
+    clearInterval(intervalo);
+    mostrarSucesso('PIX confirmado! Assinatura ativa.');
+  }
+
+  if (tentativas >= 60) {
+    clearInterval(intervalo);
+    mostrarAviso('Pagamento ainda não confirmado. Ele será ativado automaticamente assim que o banco processar.');
+  }
+}, 5000);
+```
 
 ---
 

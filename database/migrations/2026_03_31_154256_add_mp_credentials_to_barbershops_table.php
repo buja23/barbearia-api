@@ -15,7 +15,7 @@ return new class extends Migration
             // Token secreto — usado pelo backend para criar pagamentos na conta do barbeiro
             $table->text('mp_access_token')->nullable()->after('pix_key_type');
             // Chave pública — enviada ao app para inicializar o MP Bricks (card form)
-            $table->string('mp_public_key')->nullable()->after('mp_access_token');
+            $table->text('mp_public_key')->nullable()->after('mp_access_token');
         });
     }
 

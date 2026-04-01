@@ -180,7 +180,7 @@ class BarbershopResource extends Resource
                             ->label('Public Key')
                             ->placeholder('APP_USR-xxxxxxxx-...')
                             ->helperText('Encontre em mercadopago.com.br → Credenciais de Produção')
-                            ->maxLength(255),
+                            ->maxLength(1000),
 
                         TextInput::make('mp_access_token')
                             ->label('Access Token (Secreto)')
@@ -188,7 +188,16 @@ class BarbershopResource extends Resource
                             ->helperText('Nunca compartilhe este token. Ele permite cobrar em seu nome.')
                             ->password()
                             ->revealable()
-                            ->maxLength(500),
+                            ->maxLength(1000)
+                            // $hidden no model impede toArray() de incluir este campo.
+                            // Carregamos diretamente do atributo para que o Filament saiba que já existe valor.
+                            ->afterStateHydrated(function ($component, $record) {
+                                if ($record) {
+                                    $component->state($record->getRawOriginal('mp_access_token'));
+                                }
+                            })
+                            // Nunca salvar string vazia (ex: usuário abre edição sem redigitar o token)
+                            ->dehydrated(fn ($state) => filled($state)),
                     ])->columns(2),
             ]);
     }
