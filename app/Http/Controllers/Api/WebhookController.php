@@ -144,7 +144,14 @@ class WebhookController extends Controller
             return response()->json(['error' => 'No Payment ID'], 400);
         }
 
-        // 1. Consulta o status real no Mercado Pago
+        // 1a. Assinatura de barbershop plan (PIX) — busca ANTES de chamar getPayment
+        //     porque o pagamento foi criado com o token da barbearia, não o global.
+        $subscription = Subscription::where('external_id', $paymentId)->first();
+        if ($subscription) {
+            return $this->handleSubscriptionPixPayment($paymentId, $subscription);
+        }
+
+        // 1b. Consulta o status real com o token global (SaaS e agendamentos)
         $payment = $this->paymentService->getPayment($paymentId);
 
         // 2a. Verifica se é pagamento SaaS (assinatura da plataforma)
@@ -175,12 +182,8 @@ class WebhookController extends Controller
         $appointment = Appointment::where('payment_id', $paymentId)->first();
 
         if ($appointment) {
-            // 3. Atualiza os status
-            $appointment->update([
-                'payment_status' => $payment->status,
-            ]);
+            $appointment->update(['payment_status' => $payment->status]);
 
-            // Se aprovou, confirma e notifica
             if ($payment->status === 'approved' && $appointment->status !== 'confirmed') {
                 $appointment->update(['status' => 'confirmed']);
 
@@ -194,6 +197,57 @@ class WebhookController extends Controller
         }
 
         return response()->json(['status' => 'payment_target_not_found'], 404);
+    }
+
+    /**
+     * Ativa assinatura de plano da barbearia (PIX pago pelo cliente final).
+     * O pagamento foi criado com o token da barbearia — usa token dela para consultar.
+     */
+    protected function handleSubscriptionPixPayment(string $paymentId, Subscription $subscription): \Illuminate\Http\JsonResponse
+    {
+        try {
+            $barbershop = $subscription->plan?->barbershop;
+
+            if (!$barbershop || empty($barbershop->mp_access_token)) {
+                Log::warning('Webhook sub PIX: barbearia sem token MP', ['subscription_id' => $subscription->id]);
+                return response()->json(['status' => 'barbershop_token_missing'], 422);
+            }
+
+            // Consulta o pagamento usando o token da barbearia (conta que criou o PIX)
+            MercadoPagoConfig::setAccessToken($barbershop->mp_access_token);
+            $client  = new \MercadoPago\Client\Payment\PaymentClient();
+            $payment = $client->get($paymentId);
+
+            if (($payment->status ?? '') !== 'approved') {
+                return response()->json(['status' => 'subscription_pix_pending'], 200);
+            }
+
+            // Idempotência: não processa duas vezes o mesmo pagamento
+            if ($subscription->status === 'active') {
+                return response()->json(['status' => 'subscription_already_active'], 200);
+            }
+
+            $subscription->update([
+                'status'     => 'active',
+                'expires_at' => now()->addMonth(),
+            ]);
+
+            Log::channel('audit')->info('Assinatura de plano ativada via webhook PIX', [
+                'subscription_id' => $subscription->id,
+                'payment_id'      => $paymentId,
+                'barbershop_id'   => $barbershop->id,
+                'user_id'         => $subscription->user_id,
+            ]);
+
+            return response()->json(['status' => 'subscription_activated'], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Erro ao ativar assinatura via webhook PIX: ' . $e->getMessage(), [
+                'subscription_id' => $subscription->id,
+                'payment_id'      => $paymentId,
+            ]);
+            throw $e;
+        }
     }
 
     /**
