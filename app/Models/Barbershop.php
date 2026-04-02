@@ -100,6 +100,11 @@ class Barbershop extends Model
         return $this->hasMany(OpeningHour::class);
     }
 
+    public function subscriptions(): HasMany
+    {
+        return $this->hasMany(Subscription::class);
+    }
+
     // --- Lógica de Assinatura SaaS ---
 
     /**

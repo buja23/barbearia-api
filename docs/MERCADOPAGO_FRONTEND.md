@@ -13,7 +13,8 @@ Frontend                         Backend (Laravel)              MercadoPago
    │◄─ { mp_public_key: "APP_USR-..." } │                            │
    │                                    │                            │
    │  [Inicializa MP Bricks com         │                            │
-   │   mp_public_key da barbearia]      │                            │
+   │   mp_public_key da barbearia]      │                            │500
+Server Error
    │                                    │                            │
    │  [Usuário preenche cartão]         │                            │
    │  [Bricks gera card_token]          │                            │
