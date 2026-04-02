@@ -78,9 +78,11 @@ Registra um novo usuário. O `role` é sempre forçado para `client`.
 {
   "access_token": "1|abc...",
   "token_type": "Bearer",
-  "user": { "id": 1, "name": "João", "email": "joao@email.com", "role": "client" }
+  "user": { "id": 1, "name": "João", "email": "joao@email.com", "role": "client", "barbershop_id": null }
 }
 ```
+
+> ⚠️ `barbershop_id` é sempre `null` após o registro — o vínculo com uma barbearia só ocorre na primeira assinatura de plano.
 
 ---
 
@@ -101,7 +103,7 @@ Autentica um usuário existente.
 {
   "access_token": "2|xyz...",
   "token_type": "Bearer",
-  "user": { "id": 1, "name": "João", "email": "joao@email.com" }
+  "user": { "id": 1, "name": "João", "email": "joao@email.com", "barbershop_id": 1 }
 }
 ```
 
@@ -129,7 +131,7 @@ Revoga o token atual do usuário autenticado.
 
 Retorna os dados do usuário autenticado.
 
-**Resposta `200 OK`** — Objeto `User` completo (sem `password`).
+**Resposta `200 OK`** — Objeto `User` completo (sem `password`). Inclui `barbershop_id`.
 
 ---
 
@@ -627,7 +629,9 @@ Envia um reporte de problema ou sugestão a partir do **app mobile**. Requer aut
 | `role` | enum | `admin`, `barber`, `client` |
 | `cpf` | string (encrypted) | CPF criptografado |
 | `phone` | string (encrypted) | Telefone criptografado |
-| `barbershop_id` | int\|null | Barbearia vinculada (cliente) |
+| `barbershop_id` | int\|null | Barbearia vinculada. `null` = assinatura ainda não criada |
+
+> ⚠️ `barbershop_id` é retornado em **todas** as respostas que contm o objeto `user` (login, registro, `GET /api/user`). Declare-o como `number | null` no tipo TypeScript do frontend. O valor é automaticamente preenchido pelo backend na primeira assinatura.
 
 ### Barbershop (Barbearia) — campos públicos
 

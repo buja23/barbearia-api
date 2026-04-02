@@ -153,11 +153,25 @@ O token é obtido no login ou registro.
   "id": 1,
   "name": "João Silva",
   "email": "joao@email.com",
-  "role": "client"
+  "role": "client",
+  "barbershop_id": 1
 }
 ```
 
+> `barbershop_id` é retornado em **todas** as respostas de login, registro e `GET /api/user`. Pode ser `null` se o usuário ainda não assinou nenhum plano (vínculo com barbearia é criado automaticamente na primeira assinatura).
+
 > CPF e telefone são **criptografados** em repouso e não aparecem nas respostas padrão.
+
+**Tipo TypeScript recomendado:**
+```ts
+type User = {
+  id: number;
+  name: string;
+  email: string;
+  role: 'admin' | 'barber' | 'client';
+  barbershop_id: number | null; // null = usuário sem barbearia vinculada
+};
+```
 
 ### Appointment (agendamento)
 
@@ -232,6 +246,10 @@ O token é obtido no login ou registro.
 13. **`POST /api/support/report`** é exclusivo do **app mobile** — não confundir com o formulário do painel Filament ("Reportar Problema"). O painel usa um formulário interno que não passa por esta rota. A diferenciação é automática pela coluna `source`: reportes do app ficam marcados como `mobile`, reportes do painel como `admin`.
 
 14. **Reporte de suporte não aceita upload de imagem** via API. Se o usuário quiser enviar screenshot, instrua-o a enviar pelo WhatsApp da barbearia ou por e-mail. (O painel do dono aceita upload, pois é feito via Filament.)
+
+15. **`barbershop_id` é retornado no login/registro** — o campo existe no objeto `user` retornado por `POST /api/login`, `POST /api/register` e `GET /api/user`. Não está em `$hidden`. Se o frontend não vê esse campo, o tipo TypeScript provavelmente não o declara. Adicione `barbershop_id: number | null` ao tipo `User`. O valor é `null` para novos usuários que ainda não assinaram nenhum plano — esse é o comportamento correto, e reportes enviados nesse estado ficam visíveis no painel sem filtro de barbearia.
+
+16. **Reportes mobile com `barbershop_id = NULL` não sumem do painel** — o Filament usa multi-tenancy (`->tenant(Barbershop::class)`) e por padrão adiciona `WHERE barbershop_id = <tenant_atual>` em todos os resources. Isso excluiria reports de usuários sem barbearia vinculada. O `ReportResource` usa `Report::query()` diretamente (sem `parent::getEloquentQuery()`) para bypassar esse scope — o admin SaaS vê **todos** os reportes de todos os tenants e de usuários sem barbearia.
 
 ---
 

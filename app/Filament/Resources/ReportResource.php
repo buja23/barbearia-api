@@ -195,7 +195,10 @@ class ReportResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['user', 'barbershop']);
+        // Bypass Filament tenant scope: admin deve ver TODOS os reportes,
+        // incluindo os do app mobile onde barbershop_id pode ser NULL
+        // (usuários que ainda não assinaram nenhum plano).
+        return Report::query()->with(['user', 'barbershop']);
     }
 
     public static function getRelations(): array
