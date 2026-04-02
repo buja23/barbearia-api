@@ -35,6 +35,7 @@ Authorization: Bearer <token>
 | Rotas protegidas (geral) | 60 req/min |
 | Assinaturas | 10 req/min |
 | Agendamentos | 20 req/min |
+| Suporte / Reporte | 5 req/min |
 | Rotas públicas da barbearia | 30 req/min |
 
 ---
@@ -50,6 +51,7 @@ Authorization: Bearer <token>
 7. [Agendamentos](#7-agendamentos)
 8. [Assinaturas](#8-assinaturas)
 9. [Webhook](#9-webhook)
+10. [Suporte](#10-suporte)
 
 ---
 
@@ -571,6 +573,48 @@ x-request-id: <uuid>
 
 ---
 
+## 10. Suporte
+
+### `POST /api/support/report` 🔒
+
+Envia um reporte de problema ou sugestão a partir do **app mobile**. Requer autenticação. O admin do SaaS recebe uma notificação por e-mail e o reporte aparece no painel administrativo com a origem identificada como **"App Mobile"**.
+
+> ⚠️ Rate limit: **5 requisições por minuto** por usuário para evitar spam.
+
+**Body (JSON)**
+
+| Campo | Tipo | Obrigatório | Regras |
+|---|---|---|---|
+| `type` | string | ✅ | `"bug"`, `"suggestion"` ou `"other"` |
+| `title` | string | ✅ | max 150 caracteres |
+| `description` | string | ✅ | max 2000 caracteres |
+
+**Resposta `201 Created`**
+
+```json
+{
+  "message": "Reporte enviado com sucesso! Obrigado pelo feedback.",
+  "report": {
+    "id": 5,
+    "type": "bug",
+    "title": "Botão de pagamento não abre",
+    "status": "open"
+  }
+}
+```
+
+**Erros**
+
+| Código | Motivo |
+|---|---|
+| `401` | Token inválido ou ausente |
+| `422` | Campo obrigatório ausente ou `type` inválido |
+| `429` | Rate limit excedido (5/min) |
+
+> **Nota para o frontend:** O campo `barbershop_id` é extraído automaticamente do usuário autenticado — não precisa enviar. O admin verá o reporte no painel com badge "📱 App Mobile" e consegue filtrar por origem.
+
+---
+
 ## Modelos de Dados
 
 ### User
@@ -619,6 +663,17 @@ x-request-id: <uuid>
 | `uses_this_month` | int | Cortes usados no mês corrente |
 | `remaining_cuts` | int | Cortes restantes (valor armazenado no banco) |
 | `expires_at` | datetime | Data de expiração da assinatura |
+
+### Report (Reporte de Suporte)
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `id` | int | ID do reporte |
+| `type` | enum | `bug` · `suggestion` · `other` |
+| `title` | string | Título resumido (max 150 chars) |
+| `status` | enum | `open` · `in_progress` · `resolved` — definido pelo admin do SaaS |
+
+> Campos `user_id`, `barbershop_id` e `source` são preenchidos automaticamente pelo backend. O app não precisa e **não deve** enviar esses campos.
 
 ---
 

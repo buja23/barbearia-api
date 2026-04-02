@@ -91,6 +91,7 @@ class ReportProblemPage extends Page implements HasForms
             'title'         => $data['title'],
             'description'   => $data['description'],
             'image_path'    => $data['image_path'] ?? null,
+            'source'        => 'admin',
             'status'        => 'open',
         ]);
 

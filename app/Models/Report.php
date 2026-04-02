@@ -17,6 +17,7 @@ class Report extends Model
         'title',
         'description',
         'image_path',
+        'source',
         'status',
         'admin_notes',
     ];

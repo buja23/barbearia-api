@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\ForgotPasswordController;
 use App\Http\Controllers\Api\ResetPasswordController;
 // 👇 Adicione este import novo!
 use App\Http\Controllers\Api\SubscriptionController; 
+use App\Http\Controllers\Api\SupportController;
 
 /* --- 1. Autenticação (Global) com Rate Limiting --- */
 Route::middleware('throttle:' . env('RATE_LIMIT_AUTH', 5) . ',1')->group(function () {
@@ -48,6 +49,9 @@ Route::middleware('auth:sanctum', 'throttle:60,1')->group(function () {
         Route::post('/appointments', [AppointmentController::class, 'store']);     
         Route::delete('/appointments/{id}', [AppointmentController::class, 'destroy']);
     });
+
+    // Suporte / Reportar problema (Rate limit - 5 por minuto para evitar spam)
+    Route::middleware('throttle:5,1')->post('/support/report', [SupportController::class, 'store']);
 });
 
 /* 

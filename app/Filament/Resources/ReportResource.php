@@ -83,6 +83,20 @@ class ReportResource extends Resource
                     ->label('Barbearia')
                     ->searchable(),
 
+                TextColumn::make('source')
+                    ->label('Origem')
+                    ->badge()
+                    ->color(fn (string $state) => match ($state) {
+                        'mobile' => 'warning',
+                        'admin'  => 'gray',
+                        default  => 'gray',
+                    })
+                    ->formatStateUsing(fn (string $state) => match ($state) {
+                        'mobile' => '📱 App Mobile',
+                        'admin'  => '🖥️ Painel Admin',
+                        default  => $state,
+                    }),
+
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
@@ -124,6 +138,13 @@ class ReportResource extends Resource
                         'open'        => 'Aberto',
                         'in_progress' => 'Em análise',
                         'resolved'    => 'Resolvido',
+                    ]),
+
+                SelectFilter::make('source')
+                    ->label('Origem')
+                    ->options([
+                        'mobile' => '📱 App Mobile',
+                        'admin'  => '🖥️ Painel Admin',
                     ]),
             ])
             ->actions([

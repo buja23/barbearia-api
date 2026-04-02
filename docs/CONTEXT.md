@@ -88,6 +88,12 @@ O token é obtido no login ou registro.
 | `POST` | `/api/subscribe` | 🔒 | Cria nova assinatura (PIX ou cartão) |
 | `POST` | `/api/subscribe/cancel` | 🔒 | Cancela assinatura ativa |
 
+### 6. Suporte
+
+| Método | Rota | Auth | Descrição |
+|---|---|---|---|
+| `POST` | `/api/support/report` | 🔒 | Envia reporte de bug ou sugestão (app mobile) |
+
 **Body de `POST /api/subscribe`**
 
 | Campo | Tipo | Obrigatório | Observação |
@@ -173,6 +179,17 @@ O token é obtido no login ou registro.
 | `remaining_cuts` | int | Cortes restantes (valor armazenado, não calculado) |
 | `expires_at` | datetime | Data de expiração |
 
+### Report (reporte de suporte)
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `id` | int | ID do reporte |
+| `type` | enum | `bug` · `suggestion` · `other` |
+| `title` | string | Título resumido (max 150 chars) |
+| `status` | enum | `open` · `in_progress` · `resolved` |
+
+> Os campos `user_id`, `barbershop_id` e `source` são preenchidos automaticamente pelo backend. O app não precisa enviá-los.
+
 ---
 
 ## Armadilhas / Comportamentos Não Óbvios
@@ -212,6 +229,10 @@ O token é obtido no login ou registro.
     - Quando `is_closed: true`, `opening_time` e `closing_time` vêm `null`
     - Para exibir "Aberto hoje": filtre pelo dia da semana atual (`new Date().getDay()`), verifique `is_closed === false`
 
+13. **`POST /api/support/report`** é exclusivo do **app mobile** — não confundir com o formulário do painel Filament ("Reportar Problema"). O painel usa um formulário interno que não passa por esta rota. A diferenciação é automática pela coluna `source`: reportes do app ficam marcados como `mobile`, reportes do painel como `admin`.
+
+14. **Reporte de suporte não aceita upload de imagem** via API. Se o usuário quiser enviar screenshot, instrua-o a enviar pelo WhatsApp da barbearia ou por e-mail. (O painel do dono aceita upload, pois é feito via Filament.)
+
 ---
 
 ## Rate Limits
@@ -221,6 +242,7 @@ O token é obtido no login ou registro.
 | Login / Registro | 5 req/min |
 | Agendamentos | 20 req/min |
 | Assinaturas | 10 req/min |
+| Suporte / Reporte | 5 req/min |
 | Rotas públicas da barbearia | 30 req/min |
 | Demais rotas protegidas | 60 req/min |
 
