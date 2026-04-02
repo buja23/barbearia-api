@@ -48,31 +48,16 @@ class SubscriptionResource extends Resource
 
                                         return User::query()
                                             ->where('role', 'client')
-                                            ->when($tenant, fn (Builder $query) => $query->where('barbershop_id', $tenant->id))
+                                            ->when($tenant, fn (Builder $query) => $query->where(function (Builder $q) use ($tenant) {
+                                                // Clientes já vinculados à barbearia OU ainda sem vínculo (recém-cadastrados)
+                                                $q->where('barbershop_id', $tenant->id)
+                                                  ->orWhereNull('barbershop_id');
+                                            }))
                                             ->orderBy('name')
                                             ->pluck('name', 'id');
                                     })
                                     ->searchable()
-                                    ->required()
-                                    ->rule(function () {
-                                        $tenant = Filament::getTenant();
-
-                                        return function (string $attribute, $value, \Closure $fail) use ($tenant): void {
-                                            if (! $tenant) {
-                                                return;
-                                            }
-
-                                            $belongsToTenant = User::query()
-                                                ->whereKey($value)
-                                                ->where('role', 'client')
-                                                ->where('barbershop_id', $tenant->id)
-                                                ->exists();
-
-                                            if (! $belongsToTenant) {
-                                                $fail('Selecione um cliente da barbearia atual.');
-                                            }
-                                        };
-                                    }),
+                                    ->required(),
 
                                 Forms\Components\Select::make('plan_id')
                                     ->label('Plano Selecionado')
@@ -126,8 +111,9 @@ class SubscriptionResource extends Resource
                         Forms\Components\Select::make('status')
                             ->label('Status da Assinatura')
                             ->options([
-                                'active' => 'Ativo',
-                                'expired' => 'Expirado',
+                                'active'   => 'Ativo',
+                                'pending'  => 'Pendente',
+                                'expired'  => 'Expirado',
                                 'canceled' => 'Cancelado',
                             ])
                             ->default('active')
@@ -222,13 +208,17 @@ class SubscriptionResource extends Resource
             return;
         }
 
-        $belongsToTenant = User::query()
+        // Aceita clientes já vinculados à barbearia OU sem vínculo ainda (barbershop_id null)
+        $isValid = User::query()
             ->whereKey($userId)
             ->where('role', 'client')
-            ->where('barbershop_id', $tenant->id)
+            ->where(function (Builder $q) use ($tenant) {
+                $q->where('barbershop_id', $tenant->id)
+                  ->orWhereNull('barbershop_id');
+            })
             ->exists();
 
-        if (! $belongsToTenant) {
+        if (! $isValid) {
             throw ValidationException::withMessages([
                 'data.user_id' => 'Selecione um cliente da barbearia atual.',
             ]);

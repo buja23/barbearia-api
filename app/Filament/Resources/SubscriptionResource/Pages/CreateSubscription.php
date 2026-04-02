@@ -18,6 +18,21 @@ class CreateSubscription extends CreateRecord
         return $data;
     }
 
+    protected function afterCreate(): void
+    {
+        // Ao criar a assinatura manualmente no Filament,
+        // vincula o cliente à barbearia caso ainda não esteja vinculado.
+        $tenant = filament()->getTenant();
+        $userId = $this->record->user_id;
+
+        if ($tenant && $userId) {
+            \App\Models\User::query()
+                ->whereKey($userId)
+                ->whereNull('barbershop_id')
+                ->update(['barbershop_id' => $tenant->id]);
+        }
+    }
+
     protected function getRedirectUrl(): string
     {
         return SubscriptionResource::getUrl('index', [
