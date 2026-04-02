@@ -531,7 +531,10 @@ Trata dois cenários:
 | `type` / `topic` | Cenário | Ação |
 |---|---|---|
 | `subscription_preapproval` | Renovação de assinatura (cartão) | Reseta `uses_this_month`, estende `expires_at` em +30 dias, status `active` |
-| `payment` | Pagamento de PIX (agendamento ou assinatura) | Atualiza status do pagamento e do objeto relacionado |
+| `payment` (subscription) | PIX de assinatura de plano pago | Busca `Subscription` por `external_id`, consulta MP com token da barbearia, seta `status: active` + `expires_at` +30 dias |
+| `payment` (appointment) | PIX de agendamento avulso | Atualiza `payment_status` do agendamento e confirma se `approved` |
+
+> **Importante:** O backend identifica automaticamente se o `payment` é de assinatura ou agendamento pelo `external_id` salvo no banco. **Nenhuma lógica extra é necessária no frontend.** A assinatura ativa sozinha via webhook após o cliente efetuar o PIX.
 
 **Headers necessários (enviados pelo MercadoPago)**
 
@@ -769,3 +772,76 @@ const intervalo = setInterval(async () => {
 - Autorização explícita por `user_id` antes de cancelar agendamentos.
 - Rate limiting aplicado em todos os grupos de rotas.
 - Slugs validados com regex antes de qualquer consulta ao banco.
+
+---
+
+## Guia de Teste — Integração Pagamentos
+
+### Pré-requisitos
+
+| Item | Status |
+|---|---|
+| Barbearia com `mp_public_key` preenchida | Verificar no Filament |
+| Barbearia com `mp_access_token` preenchido | Verificar no Filament |
+| Webhook configurado no painel MP da barbearia | URL: `https://<dominio>/api/webhooks/mercadopago`, Evento: `payment` |
+| Credenciais de **Produção** (não Teste) | Token começa com `APP_USR-` |
+
+### Roteiro de Teste PIX
+
+```
+1. Criar conta de cliente via POST /api/register
+   → guardar token
+
+2. Chamar GET /api/{slug}/plans
+   → escolher o plano de menor valor (R$ 1,00 nos testes)
+
+3. Chamar POST /api/subscribe
+   Body: { "plan_id": <id>, "payment_method": "pix" }
+   → receber pix.copy_paste e pix.payment_id
+
+4. Pagar o PIX (copiar código no app de banco, aguardar ~5-10s)
+
+5. Iniciar polling GET /api/user/subscription a cada 5s
+   → aguardar status mudar de "pending" para "active"
+   → máximo 5 minutos; se não mudar, verificar logs do webhook
+```
+
+### Roteiro de Teste Cartão (MP Bricks)
+
+```
+1. Mesmos passos 1-2 do PIX
+
+2. Carregar SDK: <script src="https://sdk.mercadopago.com/js/v2"></script>
+
+3. Inicializar Bricks com mp_public_key da barbearia (GET /api/{slug})
+
+4. Preencher dados do cartão no Bricks
+   → onSubmit retorna formData.token (card_token) e formData.installments
+
+5. Chamar POST /api/subscribe
+   Body: { "plan_id": <id>, "payment_method": "card", "card_token": "<token>", "installments": 1 }
+   → se payment_status === "approved": assinatura já ativa
+   → se payment_status === "in_process": aguardar webhook (polling)
+```
+
+### Como verificar o webhook nos logs
+
+No servidor Forge:
+```bash
+tail -f storage/logs/laravel.log | grep -i "webhook\|subscription\|pix"
+```
+
+Ou via Tinker para ver o estado da assinatura:
+```bash
+php artisan tinker
+>>> App\Models\Subscription::latest()->first()
+```
+
+### Erros comuns e solução
+
+| Erro | Causa | Solução |
+|---|---|---|
+| `500` no `POST /api/subscribe` | `mp_access_token` não salvo | Preencher token no Filament e salvar novamente |
+| Assinatura fica `pending` para sempre | Webhook não configurado no MP | Adicionar URL do webhook no painel MP da barbearia |
+| `403` no webhook (logs) | `MERCADOPAGO_WEBHOOK_SECRET` errado no `.env` | Copiar o segredo do painel MP → aba Webhook → "Chave secreta" |
+| `mp_public_key` retorna `null` | Campo não preenchido no Filament | Preencher Public Key da barbearia |

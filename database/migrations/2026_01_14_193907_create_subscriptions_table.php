@@ -18,7 +18,7 @@ public function up(): void
         $table->date('starts_at');
         $table->date('expires_at');
         $table->integer('remaining_cuts'); // Saldo atual de cortes do mês
-        $table->enum('status', ['active', 'expired', 'canceled'])->default('active');
+        $table->enum('status', ['active', 'pending', 'expired', 'canceled'])->default('active');
         $table->timestamps();
     });
 }
