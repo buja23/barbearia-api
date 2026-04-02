@@ -211,11 +211,21 @@ Retorna informações públicas da barbearia. **Dados sensíveis são filtrados*
   "id": 1,
   "name": "Barbearia Top",
   "slug": "barbearia-top",
+  "description": "Especialistas em cortes clássicos e modernos desde 2010.",
   "logo": "https://dominio.com/storage/logos/logo.png",
   "phone": "(11) 99999-9999",
   "address": "Rua das Pedras, 123",
   "whatsapp": "https://wa.me/5511999999999",
   "mp_public_key": "APP_USR-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "opening_hours": [
+    { "day_of_week": 1, "opening_time": "09:00", "closing_time": "20:00", "is_closed": false },
+    { "day_of_week": 2, "opening_time": "09:00", "closing_time": "20:00", "is_closed": false },
+    { "day_of_week": 3, "opening_time": "09:00", "closing_time": "20:00", "is_closed": false },
+    { "day_of_week": 4, "opening_time": "09:00", "closing_time": "20:00", "is_closed": false },
+    { "day_of_week": 5, "opening_time": "09:00", "closing_time": "20:00", "is_closed": false },
+    { "day_of_week": 6, "opening_time": "09:00", "closing_time": "14:00", "is_closed": false },
+    { "day_of_week": 0, "opening_time": null, "closing_time": null, "is_closed": true }
+  ],
   "theme": {
     "primary": "#0f172a",
     "secondary": "#fbbf24"
@@ -223,7 +233,23 @@ Retorna informações públicas da barbearia. **Dados sensíveis são filtrados*
 }
 ```
 
-> ⚠️ `mp_public_key` é a chave pública MercadoPago **da barbearia**. Use-a para inicializar o MP Bricks (form de cartão). Se vier `null`, a barbearia ainda não configurou o MP — desabilite a opção de cartão no app.
+**Campos:**
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `description` | string\|null | Texto "Sobre a barbearia" para exibir na página pública. `null` se não preenchido |
+| `opening_hours` | array | Horários configurados. Array vazio `[]` se nenhum dia foi cadastrado |
+| `opening_hours[].day_of_week` | int | `0`=Dom · `1`=Seg · `2`=Ter · `3`=Qua · `4`=Qui · `5`=Sex · `6`=Sáb |
+| `opening_hours[].opening_time` | string\|null | Hora de abertura `"HH:MM"`. `null` quando `is_closed: true` |
+| `opening_hours[].closing_time` | string\|null | Hora de fechamento `"HH:MM"`. `null` quando `is_closed: true` |
+| `opening_hours[].is_closed` | boolean | `true` = fechado nesse dia |
+| `mp_public_key` | string\|null | Chave pública MP da barbearia para o Bricks. `null` = MP não configurado |
+
+> ⚠️ `mp_public_key` — se vier `null`, desabilite a opção de cartão no app.
+
+> ⚠️ `opening_hours` — só aparecem os dias **cadastrados** pelo dono no Filament. Se o array vier vazio `[]`, a barbearia não configurou horários — não exiba a seção ou exiba uma mensagem de contato.
+
+> ⚠️ `description` — pode vir `null` se o dono não preencheu. Mostre um texto padrão ou oculte a seção.
 
 **Erros**: `400` slug inválido · `404` barbearia não encontrada.
 
@@ -566,11 +592,13 @@ x-request-id: <uuid>
 | `id` | int | ID único |
 | `name` | string | Nome da barbearia |
 | `slug` | string | Identificador URL |
+| `description` | string\|null | Texto "Sobre a barbearia". `null` se não preenchido |
 | `logo` | string\|null | URL absoluta do logo |
 | `phone` | string | Telefone mascarado |
 | `address` | string | Endereço |
 | `whatsapp` | string | Link `https://wa.me/55...` |
 | `mp_public_key` | string\|null | Chave pública MP da barbearia para Bricks |
+| `opening_hours` | array | Dias e horários de funcionamento cadastrados |
 
 > Campos `mp_access_token`, `pix_key` e outros dados sensíveis **nunca aparecem** na API.
 

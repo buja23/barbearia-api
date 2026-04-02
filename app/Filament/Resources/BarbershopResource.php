@@ -9,6 +9,7 @@ use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\Toggle;
@@ -58,6 +59,13 @@ class BarbershopResource extends Resource
 
                         TextInput::make('address')
                             ->label('Endereço'),
+
+                        Textarea::make('description')
+                            ->label('Sobre a Barbearia')
+                            ->placeholder('Descreva sua barbearia, especialidades, diferenciais...')
+                            ->helperText('Exibido na página pública para os clientes.')
+                            ->rows(3)
+                            ->columnSpanFull(),
 
                         FileUpload::make('logo_path')
                             ->image()

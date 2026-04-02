@@ -66,7 +66,7 @@ O token é obtido no login ou registro.
 
 | Método | Rota | Descrição |
 |---|---|---|
-| `GET` | `/api/{slug}` | Info pública da barbearia (nome, logo, endereço, tema) |
+| `GET` | `/api/{slug}` | Info pública da barbearia (nome, logo, endereço, descrição, horários, tema) |
 | `GET` | `/api/{slug}/services` | Lista serviços ativos (nome, preço, duração) |
 | `GET` | `/api/{slug}/barbers` | Lista barbeiros ativos |
 | `GET` | `/api/{slug}/plans` | Lista planos de assinatura ativos |
@@ -204,6 +204,13 @@ O token é obtido no login ou registro.
 9. **O dinheiro vai direto para a conta MP da barbearia** — o SaaS não intermedia.
 
 10. **Cancelamento de agendamento via assinatura** (`total_price = 0`) devolve 1 corte ao saldo (`uses_this_month--`) automaticamente.
+
+11. **`description`** em `GET /api/{slug}` pode vir `null` se o dono da barbearia não preencheu o campo no Filament. O app deve tratar esse caso (texto padrão ou ocultar a seção "Sobre nós").
+
+12. **`opening_hours`** em `GET /api/{slug}` retorna **apenas os dias cadastrados** pelo dono no Filament. Se o array vier vazio `[]`, não exiba a seção de horários ou mostre "Consulte pelo WhatsApp".
+    - `day_of_week`: `0`=Dom, `1`=Seg, `2`=Ter, `3`=Qua, `4`=Qui, `5`=Sex, `6`=Sáb
+    - Quando `is_closed: true`, `opening_time` e `closing_time` vêm `null`
+    - Para exibir "Aberto hoje": filtre pelo dia da semana atual (`new Date().getDay()`), verifique `is_closed === false`
 
 ---
 

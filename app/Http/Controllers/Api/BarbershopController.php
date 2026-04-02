@@ -29,11 +29,14 @@ class BarbershopController extends Controller
             ? asset('storage/' . $barbershop->logo_path)
             : null;
 
+        $barbershop->load('openingHours');
+
         // ✅ Retorna APENAS dados públicos (sem IDs internos, etc)
         return response()->json([
             'id'            => $barbershop->id,
             'name'          => $barbershop->name,
             'slug'          => $barbershop->slug,
+            'description'   => $barbershop->description,
             'logo'          => $logoUrl,
             // ✅ SEGURANÇA: Formatar telefone sem expor o completo
             'phone'         => $this->maskPhone($barbershop->phone),
@@ -42,6 +45,12 @@ class BarbershopController extends Controller
             // Chave pública do MP da barbearia — usada pelo app para inicializar o Bricks (form de cartão)
             // null = barbearia ainda não configurou o MercadoPago
             'mp_public_key' => $barbershop->mp_public_key ?: null,
+            'opening_hours' => $barbershop->openingHours->map(fn ($h) => [
+                'day_of_week'  => $h->day_of_week,    // 0=Dom, 1=Seg, ..., 6=Sáb
+                'opening_time' => $h->opening_time,    // "09:00"
+                'closing_time' => $h->closing_time,    // "20:00"
+                'is_closed'    => (bool) $h->is_closed,
+            ]),
             'theme'         => [
                 'primary'   => '#0f172a',
                 'secondary' => '#fbbf24',

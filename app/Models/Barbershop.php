@@ -16,6 +16,7 @@ class Barbershop extends Model
         'user_id',
         'name',
         'slug',
+        'description',
         'phone',
         'address',
         'pix_key',
