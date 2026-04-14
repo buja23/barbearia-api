@@ -30,3 +30,4 @@ fix_blade3.py
 fix_pix_temp.php
 fix-vulnerabilities.sh
 write_blade.py
+public/downloads/*.apk

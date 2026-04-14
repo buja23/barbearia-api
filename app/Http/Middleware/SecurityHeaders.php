@@ -21,7 +21,7 @@ class SecurityHeaders
         // CSP: unsafe-eval é obrigatório para Alpine.js v3 (Filament usa internamente)
         $response->headers->set('Content-Security-Policy',
             "default-src 'self'; " .
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://sdk.mercadopago.com https://cdn.jsdelivr.net; " .
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://sdk.mercadopago.com https://cdn.jsdelivr.net https://cdn.tailwindcss.com; " .
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " .
             "font-src 'self' https://fonts.gstatic.com data:; " .
             "img-src 'self' data: blob: https:; " .

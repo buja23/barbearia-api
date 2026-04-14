@@ -6,7 +6,7 @@ use App\Http\Controllers\MercadoPagoOAuthController;
 
 // Redirecionar raiz para painel admin
 Route::get('/', function () {
-    return redirect('/admin');
+    return view('landing');
 });
 
 // Rota pública para clientes
