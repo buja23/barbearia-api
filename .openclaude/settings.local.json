@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(find /z/home/buja/projetos/barbearia-api -type d -name public -exec ls -R {})",
+      "Bash(2)",
+      "Bash(find Z:/home/buja/projetos/barbearia-api/ -name APPimg.jpeg -o -name favicon* -o -name manifest* -o -name index.html -o -name app.json -o -name expo*)",
+      "Bash(magick --version)",
+      "Bash(magick.exe --version)"
+    ]
+  }
+}

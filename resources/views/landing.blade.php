@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Baixe nosso App | Barbearia PRO</title>
+    <title>Baixe nosso App | BarberEasy</title>
+    <link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
     
     {{-- Tailwind CSS via CDN --}}
     <script src="https://cdn.tailwindcss.com"></script>
@@ -28,7 +29,7 @@
     <header class="fixed top-0 z-50 w-full border-b border-white/10 bg-gray-950/80 backdrop-blur-md">
         <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
             <div class="flex items-center gap-2">
-                <span class="text-2xl font-black tracking-tighter text-white">SUA BARBEARIA</span>
+                <span class="text-2xl font-black tracking-tighter text-white">BarberEasy</span>
             </div>
             <div class="flex items-center gap-5">
                 <a href="/admin/login" class="hidden text-sm font-semibold text-gray-300 hover:text-white sm:block">Painel do Dono</a>
@@ -67,10 +68,7 @@
                     
                     <div class="relative w-[280px] h-[580px] rounded-[3rem] border-[8px] border-gray-800 bg-gray-900 shadow-2xl flex items-center justify-center overflow-hidden ring-1 ring-white/10">
                         <div class="absolute top-0 w-32 h-6 bg-gray-800 rounded-b-2xl"></div> 
-                        <div class="text-center">
-                            <span class="text-7xl">📱</span>
-                            <p class="mt-4 text-gray-500 font-bold text-sm tracking-widest uppercase">App Preview</p>
-                        </div>
+                        <img src="{{ asset('images/APPimg.jpeg') }}" alt="App Preview" class="w-full h-full object-cover rounded-[2.5rem]">
                     </div>
                 </div>
             </div>
@@ -110,7 +108,7 @@
     </section>
 
     <footer class="border-t border-white/10 bg-gray-950 py-10 text-center">
-        <p class="text-sm font-semibold text-gray-500">&copy; {{ date('Y') }} Barbearia PRO. Todos os direitos reservados.</p>
+        <p class="text-sm font-semibold text-gray-500">&copy; {{ date('Y') }} BarberEasy. Todos os direitos reservados.</p>
     </footer>
 
 </body>

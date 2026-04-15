@@ -16,6 +16,19 @@ https://<seu-dominio>/api
 
 ---
 
+## Headers Padrões (Front-end/Mobile)
+
+Para que o Laravel reconheça corretamente as requisições como sendo de uma API e retorne erros em JSON estruturado (ex: `401 Unauthorized` ou `422 Unprocessable Entity`), **todas as requisições** originadas do App ou Web App devem conter os seguintes headers:
+
+```http
+Accept: application/json
+Content-Type: application/json
+```
+
+> ⚠️ Sem o header `Accept: application/json`, requisições não autorizadas podem resultar em redirecionamentos HTML (Status `302` para a rota de login web), quebrando o parser do Axios/Fetch.
+
+---
+
 ## Autenticação
 
 A API usa **Laravel Sanctum** (Bearer Token). Após login ou registro, inclua o token em todas as requisições protegidas:
@@ -84,6 +97,8 @@ Registra um novo usuário. O `role` é sempre forçado para `client`.
 
 > ⚠️ `barbershop_id` é sempre `null` após o registro — o vínculo com uma barbearia só ocorre na primeira assinatura de plano.
 
+> ⚠️ Os campos `cpf` e `phone` **não** são enviados pelo registro/login. Eles são campos internos criptografados (`encrypted` cast) — o frontend não os recebe nas respostas.
+
 ---
 
 ### `POST /api/login`
@@ -145,6 +160,7 @@ Atualiza nome e e-mail do perfil. Se o e-mail for alterado, `email_verified_at` 
 |---|---|---|
 | `name` | string | ✅ |
 | `email` | string | ✅ |
+| `password` | string | ❌ | só se quiser trocar a senha (exige `current_password` + `password_confirmation`, mín 10 chars com maiúsculas, minúsculas e números) |
 
 **Resposta `200 OK`**
 
@@ -170,6 +186,8 @@ Solicita o envio de e-mail com link para redefinição de senha. A resposta é s
 | `email` | string | ✅ |
 
 **Resposta `200 OK`**
+
+> ⚠️ **Nota para o Mobile:** O e-mail enviado pelo backend deve conter um link que utilize **Deep Linking** (ex: `barbereasy://reset-password?token={token}&email={email}`) para que o usuário seja redirecionado de volta para o aplicativo ao clicar no e-mail.
 
 ```json
 { "message": "Se o email estiver cadastrado, você receberá um link de redefinição em breve." }
@@ -397,7 +415,7 @@ Cria um novo agendamento. A lógica verifica automaticamente se o usuário possu
 |---|---|---|---|
 | `barber_id` | integer | ✅ | deve pertencer à barbearia |
 | `service_id` | integer | ✅ | deve pertencer à barbearia |
-| `scheduled_at` | datetime (ISO 8601) | ✅ | ex: `2026-04-15T10:00:00` |
+| `scheduled_at` | datetime | ✅ | formato `Y-m-d H:i:s`, ex: `2026-04-15 10:00:00` — deve ser no futuro e dentro de 1 ano |
 | `client_phone` | string | ❌ | se omitido usa o telefone cadastrado do usuário |
 
 **Resposta `201 Created`**
@@ -445,8 +463,8 @@ Retorna a assinatura ativa do usuário com detalhes do plano.
   "plan_id": 1,
   "barbershop_id": 1,
   "status": "active",
-  "starts_at": "2026-03-01T00:00:00.000000Z",
-  "expires_at": "2026-04-01T00:00:00.000000Z",
+  "starts_at": "2026-03-01",
+  "expires_at": "2026-04-01",
   "uses_this_month": 1,
   "remaining_cuts": 2,
   "plan": {
@@ -625,13 +643,11 @@ Envia um reporte de problema ou sugestão a partir do **app mobile**. Requer aut
 |---|---|---|
 | `id` | int | ID único |
 | `name` | string | Nome completo |
-| `email` | string | E-mail único |
+| `email` | string | E-mail único (único no banco) |
 | `role` | enum | `admin`, `barber`, `client` |
-| `cpf` | string (encrypted) | CPF criptografado |
-| `phone` | string (encrypted) | Telefone criptografado |
 | `barbershop_id` | int\|null | Barbearia vinculada. `null` = assinatura ainda não criada |
 
-> ⚠️ `barbershop_id` é retornado em **todas** as respostas que contm o objeto `user` (login, registro, `GET /api/user`). Declare-o como `number | null` no tipo TypeScript do frontend. O valor é automaticamente preenchido pelo backend na primeira assinatura.
+> ⚠️ `barbershop_id` é retornado em **todas** as respostas que contêm o objeto `user` (login, registro, `GET /api/user`). Declare-o como `number | null` no tipo TypeScript do frontend. O valor é automaticamente preenchido pelo backend na primeira assinatura.
 
 ### Barbershop (Barbearia) — campos públicos
 
@@ -666,7 +682,7 @@ Envia um reporte de problema ou sugestão a partir do **app mobile**. Requer aut
 | `status` | enum | `active`, `pending`, `canceled`, `expired` |
 | `uses_this_month` | int | Cortes usados no mês corrente |
 | `remaining_cuts` | int | Cortes restantes (valor armazenado no banco) |
-| `expires_at` | datetime | Data de expiração da assinatura |
+| `expires_at` | date | Data de expiração da assinatura (formato `YYYY-MM-DD`) |
 
 ### Report (Reporte de Suporte)
 
