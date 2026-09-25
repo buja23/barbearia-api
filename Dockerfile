@@ -1,12 +1,17 @@
-# Usar a imagem oficial do PHP 8.2 (ou a versão que usas) com Apache
-FROM php:8.2-apache
+# Atualizado para a versão PHP 8.4 com Apache
+FROM php:8.4-apache
 
-# Instalar extensões necessárias para o Laravel e PostgreSQL
+# Instalar bibliotecas de sistema necessárias para as extensões do PHP
 RUN apt-get update && apt-get install -y \
     libpq-dev \
     libzip-dev \
     unzip \
-    && docker-php-ext-install pdo pdo_pgsql zip
+    libicu-dev \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo pdo_pgsql zip intl gd
 
 # Instalar o Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -29,5 +34,4 @@ RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cac
 RUN composer install --optimize-autoloader --no-dev
 
 # Gerar a app key e correr as migrations na hora de iniciar o servidor
-# Atenção: O Render gere o servidor, este comando corre quando o deploy termina
 CMD php artisan storage:link && php artisan migrate --force && apache2-foreground
