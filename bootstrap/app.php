@@ -13,6 +13,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // CONFIAR NO PROXY DO RENDER (Isto resolve o erro de JSON do Livewire/Filament)
+        $middleware->trustProxies(at: '*');
+
         // Security headers em todas as respostas
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
 
