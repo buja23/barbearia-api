@@ -1,7 +1,5 @@
-# Imagem base do PHP 8.4 com Apache
 FROM php:8.4-apache
 
-# Instalar bibliotecas de sistema necessárias para as extensões do PHP
 RUN apt-get update && apt-get install -y \
     libpq-dev \
     libzip-dev \
@@ -11,34 +9,35 @@ RUN apt-get update && apt-get install -y \
     libjpeg-dev \
     libfreetype6-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install pdo pdo_pgsql zip intl gd
+    && docker-php-ext-install pdo_pgsql zip intl gd \
+    && rm -rf /var/lib/apt/lists/*
 
-# Instalar o Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Configurar o Apache para apontar para a pasta public do Laravel
-ENV APACHE_DOCUMENT_ROOT /var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 
-# Habilitar mod_rewrite do Apache
-RUN a2enmod rewrite
+RUN sed -ri \
+    -e 's!/var/www/html!/var/www/html/public!g' \
+    /etc/apache2/sites-available/*.conf
 
-# Copiar os ficheiros do projeto para o contentor
-COPY . /var/www/html
+RUN a2enmod rewrite headers
 
-# CRIAR AS PASTAS DE SESSÃO E CACHE QUE O GIT IGNORA
-RUN mkdir -p /var/www/html/storage/framework/sessions \
-    && mkdir -p /var/www/html/storage/framework/views \
-    && mkdir -p /var/www/html/storage/framework/cache/data
+WORKDIR /var/www/html
 
-# Ajustar permissões totais para o Apache conseguir gravar as sessões
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+COPY . .
 
-# Instalar dependências
-RUN composer install --optimize-autoloader --no-dev
+RUN composer install \
+    --no-dev \
+    --optimize-autoloader \
+    --no-interaction
 
-# Limpar cache, criar links e migrar na inicialização
-CMD php artisan optimize:clear && php artisan storage:link && php artisan migrate --force && apache2-foreground
+RUN mkdir -p \
+    storage/framework/sessions \
+    storage/framework/views \
+    storage/framework/cache/data \
+    bootstrap/cache
 
-CMD chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache && php artisan optimize:clear && php artisan storage:link && php artisan migrate --force && apache2-foreground
+RUN chown -R www-data:www-data storage bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
+
+CMD ["sh", "-c", "php artisan optimize:clear && php artisan storage:link || true && php artisan migrate --force && exec apache2-foreground"]
