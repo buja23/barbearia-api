@@ -35,3 +35,5 @@ RUN composer install --optimize-autoloader --no-dev
 
 # Gerar a app key e correr as migrations na hora de iniciar o servidor
 CMD php artisan storage:link && php artisan migrate --force && apache2-foreground
+
+CMD php artisan optimize:clear && php artisan storage:link && php artisan migrate --force && apache2-foreground
