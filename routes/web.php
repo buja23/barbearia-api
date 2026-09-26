@@ -34,6 +34,8 @@ Route::get('/mp/callback', [MercadoPagoOAuthController::class, 'callback'])
 Route::get('/debug-cookie', function () {
     $response = response('cookie teste');
 
+    $response->headers->set('X-Debug-Test', 'funcionou');
+
     $response->headers->setCookie(
         Cookie::create('manual_cookie')
             ->withValue('funcionou')
@@ -43,11 +45,7 @@ Route::get('/debug-cookie', function () {
             ->withSameSite('lax')
     );
 
-    \Log::debug('DEBUG COOKIE RESPONSE', [
-        'cookies' => array_map(
-            fn ($cookie) => (string) $cookie,
-            $response->headers->getCookies()
-        ),
+    \Log::debug('DEBUG HEADERS RESPONSE', [
         'headers' => $response->headers->all(),
     ]);
 
