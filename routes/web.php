@@ -43,5 +43,13 @@ Route::get('/debug-cookie', function () {
             ->withSameSite('lax')
     );
 
+    \Log::debug('DEBUG COOKIE RESPONSE', [
+        'cookies' => array_map(
+            fn ($cookie) => (string) $cookie,
+            $response->headers->getCookies()
+        ),
+        'headers' => $response->headers->all(),
+    ]);
+
     return $response;
 });
