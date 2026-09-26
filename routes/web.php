@@ -51,3 +51,27 @@ Route::get('/debug-cookie', function () {
 
     return $response;
 });
+
+Route::get('/debug-internal', function () {
+    $ch = curl_init('http://127.0.0.1/debug-cookie');
+
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HEADER => true,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_TIMEOUT => 10,
+    ]);
+
+    $response = curl_exec($ch);
+
+    $error = curl_error($ch);
+    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+    curl_close($ch);
+
+    return response()->json([
+        'status' => $status,
+        'error' => $error ?: null,
+        'raw_response' => $response,
+    ]);
+});
