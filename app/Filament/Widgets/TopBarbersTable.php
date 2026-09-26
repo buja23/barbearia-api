@@ -21,7 +21,10 @@ class TopBarbersTable extends BaseWidget
                     ->when(filament()->getTenant(), fn ($q, $t) => $q->where('barbershop_id', $t->id))
                     ->withCount(['appointments' => function (Builder $query) {
                         $query->where('status', 'completed')
-                              ->whereMonth('scheduled_at', now()->month);
+                              ->whereBetween('scheduled_at', [
+                                    now()->startOfMonth(),
+                                    now()->endOfMonth(),
+                                ])
                     }])
                     ->withSum(['appointments as total_revenue' => function (Builder $query) {
                         $query->where('status', 'completed')

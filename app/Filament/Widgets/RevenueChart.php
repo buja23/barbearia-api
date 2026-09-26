@@ -10,13 +10,21 @@ use Flowframe\Trend\TrendValue;
 class RevenueChart extends ChartWidget
 {
     protected static ?string $heading = 'Faturamento Anual';
+
     protected static ?int $sort = 2;
-    protected int | string | array $columnSpan = 'full'; // Ocupa a largura toda
+
+    protected int | string | array $columnSpan = 'full';
 
     protected function getData(): array
     {
-        // Busca dados dos últimos 12 meses agrupados por mês
-        $data = Trend::model(Appointment::class)
+        $query = Appointment::query()
+            ->where('status', 'completed')
+            ->when(
+                filament()->getTenant(),
+                fn ($query, $tenant) => $query->where('barbershop_id', $tenant->id)
+            );
+
+        $data = Trend::query($query)
             ->between(
                 start: now()->subYear(),
                 end: now(),
@@ -28,14 +36,20 @@ class RevenueChart extends ChartWidget
             'datasets' => [
                 [
                     'label' => 'Receita (R$)',
-                    'data' => $data->map(fn (TrendValue $value) => $value->aggregate),
-                    'fill' => 'start', // Cria o efeito de área preenchida
-                    'backgroundColor' => 'rgba(59, 130, 246, 0.1)', // Azul transparente
-                    'borderColor' => '#3b82f6', // Azul sólido
-                    'tension' => 0.4, // Curva suave
+                    'data' => $data->map(
+                        fn (TrendValue $value) => $value->aggregate
+                    ),
+                    'fill' => 'start',
+                    'backgroundColor' => 'rgba(59, 130, 246, 0.1)',
+                    'borderColor' => '#3b82f6',
+                    'tension' => 0.4,
                 ],
             ],
-            'labels' => $data->map(fn (TrendValue $value) => \Carbon\Carbon::parse($value->date)->format('M Y')),
+
+            'labels' => $data->map(
+                fn (TrendValue $value) =>
+                    \Carbon\Carbon::parse($value->date)->format('M Y')
+            ),
         ];
     }
 

@@ -41,4 +41,4 @@ RUN mkdir -p \
 RUN chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
-CMD ["sh", "-c", "php artisan optimize:clear && php artisan storage:link || true && php artisan migrate --force && exec apache2-foreground"]
+CMD ["sh", "-c", "php artisan optimize:clear && php artisan storage:link || true && php artisan migrate --force && php artisan db:seed --class=DemoSeeder --force && php artisan optimize && exec apache2-foreground"]
