@@ -40,3 +40,5 @@ RUN composer install --optimize-autoloader --no-dev
 
 # Limpar cache, criar links e migrar na inicialização
 CMD php artisan optimize:clear && php artisan storage:link && php artisan migrate --force && apache2-foreground
+
+CMD php artisan config:cache && php artisan storage:link && php artisan migrate --force && apache2-foreground
