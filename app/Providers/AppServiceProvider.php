@@ -14,10 +14,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // O martelo definitivo para Proxies, Docker e Livewire
-        if (env('APP_ENV') === 'production') {
-            // 1. Força o Laravel a usar o domínio exato do Render (Ignora o IP do Apache)
-            URL::forceRootUrl(env('APP_URL'));
+        // Usar config() em vez de env() porque estamos a usar config:cache no Render!
+        if (config('app.env') === 'production') {
+            // 1. Força o Laravel a usar o domínio exato do Render
+            URL::forceRootUrl(config('app.url'));
             
             // 2. Força a criação de links seguros
             URL::forceScheme('https');
