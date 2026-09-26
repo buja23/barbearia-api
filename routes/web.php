@@ -32,22 +32,30 @@ Route::get('/mp/callback', [MercadoPagoOAuthController::class, 'callback'])
     ->name('mp.callback');
 
 Route::get('/debug-cookie', function () {
-    $response = response('cookie teste');
+    $file = null;
+    $line = null;
+
+    $alreadySent = headers_sent($file, $line);
+
+    $response = response()->json([
+        'headers_sent' => $alreadySent,
+        'headers_sent_file' => $file,
+        'headers_sent_line' => $line,
+        'output_buffering' => ini_get('output_buffering'),
+        'ob_level' => ob_get_level(),
+        'php_headers' => headers_list(),
+    ]);
 
     $response->headers->set('X-Debug-Test', 'funcionou');
 
     $response->headers->setCookie(
-        Cookie::create('manual_cookie')
+        \Symfony\Component\HttpFoundation\Cookie::create('manual_cookie')
             ->withValue('funcionou')
             ->withPath('/')
             ->withSecure(true)
             ->withHttpOnly(true)
             ->withSameSite('lax')
     );
-
-    \Log::debug('DEBUG HEADERS RESPONSE', [
-        'headers' => $response->headers->all(),
-    ]);
 
     return $response;
 });
