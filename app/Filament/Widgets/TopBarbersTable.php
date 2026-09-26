@@ -15,28 +15,56 @@ class TopBarbersTable extends BaseWidget
 
     public function table(Table $table): Table
     {
+        $startOfMonth = now()->startOfMonth();
+        $endOfMonth = now()->endOfMonth();
+
         return $table
             ->query(
                 Barber::query()
-                    ->when(filament()->getTenant(), fn ($q, $t) => $q->where('barbershop_id', $t->id))
-                    ->withCount(['appointments' => function (Builder $query) {
-                        $query->where('status', 'completed')
-                              ->whereBetween('scheduled_at', [
-                                    now()->startOfMonth(),
-                                    now()->endOfMonth(),
-                                ])
-                    }])
-                    ->withSum(['appointments as total_revenue' => function (Builder $query) {
-                        $query->where('status', 'completed')
-                              ->whereMonth('scheduled_at', now()->month);
-                    }], 'total_price')
-                    ->orderByDesc('total_revenue') // Ordena por quem faturou mais
+                    ->when(
+                        filament()->getTenant(),
+                        fn ($query, $tenant) =>
+                            $query->where('barbershop_id', $tenant->id)
+                    )
+
+                    ->withCount([
+                        'appointments' => function (Builder $query) use (
+                            $startOfMonth,
+                            $endOfMonth
+                        ) {
+                            $query
+                                ->where('status', 'completed')
+                                ->whereBetween('scheduled_at', [
+                                    $startOfMonth,
+                                    $endOfMonth,
+                                ]);
+                        }
+                    ])
+
+                    ->withSum([
+                        'appointments as total_revenue' => function (
+                            Builder $query
+                        ) use (
+                            $startOfMonth,
+                            $endOfMonth
+                        ) {
+                            $query
+                                ->where('status', 'completed')
+                                ->whereBetween('scheduled_at', [
+                                    $startOfMonth,
+                                    $endOfMonth,
+                                ]);
+                        }
+                    ], 'total_price')
+
+                    ->orderByDesc('total_revenue')
             )
+
             ->columns([
                 Tables\Columns\ImageColumn::make('avatar_url')
                     ->label('')
                     ->circular(),
-                
+
                 Tables\Columns\TextColumn::make('name')
                     ->label('Barbeiro')
                     ->weight('bold'),
@@ -52,6 +80,7 @@ class TopBarbersTable extends BaseWidget
                     ->sortable()
                     ->color('success'),
             ])
-            ->paginated(false); // Mostra só a lista direta
+
+            ->paginated(false);
     }
 }
