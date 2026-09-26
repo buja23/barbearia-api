@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Models\Barbershop;
 use App\Http\Controllers\MercadoPagoOAuthController;
+use Symfony\Component\HttpFoundation\Cookie;
 
 // Redirecionar raiz para painel admin
 Route::get('/', function () {
@@ -31,9 +32,16 @@ Route::get('/mp/callback', [MercadoPagoOAuthController::class, 'callback'])
     ->name('mp.callback');
 
 Route::get('/debug-cookie', function () {
-    return response('cookie teste')
-        ->header(
-            'Set-Cookie',
-            'manual_cookie=funcionou; Path=/; Secure; HttpOnly; SameSite=Lax'
-        );
+    $response = response('cookie teste');
+
+    $response->headers->setCookie(
+        Cookie::create('manual_cookie')
+            ->withValue('funcionou')
+            ->withPath('/')
+            ->withSecure(true)
+            ->withHttpOnly(true)
+            ->withSameSite('lax')
+    );
+
+    return $response;
 });
