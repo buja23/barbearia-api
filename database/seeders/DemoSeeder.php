@@ -376,83 +376,94 @@ class DemoSeeder extends Seeder
     // 7. PRODUTOS
     // ========================================================================
 
-    private function seedProducts(
-        Barbershop $barbershop
-    ): array {
-        $data = [
-            [
-                'name' => 'Pomada Modeladora Premium',
-                'description' => 'Pomada de alta fixação com efeito seco.',
-                'cost_price' => 18.00,
-                'sale_price' => 35.00,
-                'quantity' => 30,
-                'min_stock_alert' => 5,
-                'type' => 'pomada',
-            ],
-            [
-                'name' => 'Shampoo Masculino 300ml',
-                'description' => 'Shampoo profissional para uso diário.',
-                'cost_price' => 16.00,
-                'sale_price' => 32.00,
-                'quantity' => 25,
-                'min_stock_alert' => 5,
-                'type' => 'shampoo',
-            ],
-            [
-                'name' => 'Óleo para Barba',
-                'description' => 'Óleo hidratante para barba.',
-                'cost_price' => 20.00,
-                'sale_price' => 42.00,
-                'quantity' => 18,
-                'min_stock_alert' => 4,
-                'type' => 'barba',
-            ],
-            [
-                'name' => 'Balm para Barba',
-                'description' => 'Balm hidratante e modelador.',
-                'cost_price' => 17.00,
-                'sale_price' => 38.00,
-                'quantity' => 20,
-                'min_stock_alert' => 4,
-                'type' => 'barba',
-            ],
-            [
-                'name' => 'Cera Modeladora',
-                'description' => 'Cera de fixação média e acabamento natural.',
-                'cost_price' => 15.00,
-                'sale_price' => 30.00,
-                'quantity' => 22,
-                'min_stock_alert' => 5,
-                'type' => 'cera',
-            ],
-            [
-                'name' => 'Pós-Barba Premium',
-                'description' => 'Loção refrescante pós-barba.',
-                'cost_price' => 22.00,
-                'sale_price' => 45.00,
-                'quantity' => 15,
-                'min_stock_alert' => 3,
-                'type' => 'pos_barba',
-            ],
-        ];
+private function seedProducts(
+    Barbershop $barbershop
+): array {
+    $data = [
+        [
+            'name' => 'Pomada Modeladora Premium',
+            'description' => 'Pomada de alta fixação com efeito seco.',
+            'cost_price' => 18.00,
+            'sale_price' => 35.00,
+            'quantity' => 30,
+            'min_stock_alert' => 5,
+            'type' => 'resale',
+        ],
+        [
+            'name' => 'Shampoo Masculino 300ml',
+            'description' => 'Shampoo profissional para uso diário.',
+            'cost_price' => 16.00,
+            'sale_price' => 32.00,
+            'quantity' => 25,
+            'min_stock_alert' => 5,
+            'type' => 'resale',
+        ],
+        [
+            'name' => 'Óleo para Barba',
+            'description' => 'Óleo hidratante para barba.',
+            'cost_price' => 20.00,
+            'sale_price' => 42.00,
+            'quantity' => 18,
+            'min_stock_alert' => 4,
+            'type' => 'resale',
+        ],
+        [
+            'name' => 'Balm para Barba',
+            'description' => 'Balm hidratante e modelador.',
+            'cost_price' => 17.00,
+            'sale_price' => 38.00,
+            'quantity' => 20,
+            'min_stock_alert' => 4,
+            'type' => 'resale',
+        ],
+        [
+            'name' => 'Cera Modeladora',
+            'description' => 'Cera de fixação média e acabamento natural.',
+            'cost_price' => 15.00,
+            'sale_price' => 30.00,
+            'quantity' => 22,
+            'min_stock_alert' => 5,
+            'type' => 'resale',
+        ],
+        [
+            'name' => 'Pós-Barba Premium',
+            'description' => 'Loção refrescante pós-barba.',
+            'cost_price' => 22.00,
+            'sale_price' => 45.00,
+            'quantity' => 15,
+            'min_stock_alert' => 3,
+            'type' => 'resale',
+        ],
 
-        $products = [];
+        // Produto de uso interno
+        [
+            'name' => 'Lâminas Profissionais',
+            'description' => 'Lâminas utilizadas nos atendimentos da barbearia.',
+            'cost_price' => 12.00,
+            'sale_price' => 0,
+            'quantity' => 50,
+            'min_stock_alert' => 10,
+            'type' => 'usage',
+        ],
+    ];
 
-        foreach ($data as $productData) {
-            $products[] = Product::updateOrCreate(
-                [
-                    'barbershop_id' => $barbershop->id,
-                    'name' => $productData['name'],
-                ],
-                [
-                    ...$productData,
-                    'barbershop_id' => $barbershop->id,
-                ]
-            );
-        }
+    $products = [];
 
-        return $products;
+    foreach ($data as $productData) {
+        $products[] = Product::updateOrCreate(
+            [
+                'barbershop_id' => $barbershop->id,
+                'name' => $productData['name'],
+            ],
+            [
+                ...$productData,
+                'barbershop_id' => $barbershop->id,
+            ]
+        );
     }
+
+    return $products;
+}
 
     // ========================================================================
     // 8. PLANOS DE CLIENTES
