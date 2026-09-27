@@ -268,7 +268,7 @@ public static function table(Table $table): Table
                 ->iconButton()
                 ->visible(fn(Appointment $record) => $record->payment_status !== 'approved' && $record->status !== 'canceled' && $record->status !== 'completed')
                 ->modalHeading('Receber via Pix')
-                ->modalContent(function (Appointment $record, PaymentService $service) {
+                ->modalContent(function (Appointment $record) {
                     $barbershop = $record->barbershop;
 
                     // Sem chave PIX cadastrada: bloqueia e orienta o dono
