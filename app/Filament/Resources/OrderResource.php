@@ -7,14 +7,18 @@ use App\Filament\Resources\OrderResource\Pages;
 use App\Models\Order;
 use App\Models\Product;
 use App\Services\PaymentService;
+use App\Support\DemoAccess;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class OrderResource extends Resource
 {
+    use \App\Filament\Concerns\ProtectsDemoRecords;
+
     protected static ?string $model = Order::class;
 
     protected static ?string $navigationIcon =
@@ -28,17 +32,9 @@ class OrderResource extends Resource
     protected static ?string $tenantOwnershipRelationshipName =
         'barbershop';
 
-    /*
-    |--------------------------------------------------------------------------
-    | Verifica se o usuário atual é a conta demo
-    |--------------------------------------------------------------------------
-    */
-
-    private static function isDemoUser(): bool
+    public static function canEdit(Model $record): bool
     {
-        return config('demo.enabled')
-            && auth()->check()
-            && auth()->user()->email === config('demo.email');
+        return ! DemoAccess::protects($record) && parent::canEdit($record);
     }
 
     public static function form(
@@ -313,23 +309,22 @@ class OrderResource extends Resource
                     )
 
                     ->modalHeading(
-                        fn () =>
-                            self::isDemoUser()
+                        fn (Order $record) =>
+                            DemoAccess::protects($record)
                                 ? 'PIX — Ambiente Demonstrativo'
                                 : 'Receber venda via PIX'
                     )
 
                     ->modalContent(
                         function (
-                            Order $record,
-                            PaymentService $service
+                            Order $record
                         ) {
 
                             /*
                              * Conta demo:
                              * nunca chama Mercado Pago.
                              */
-                            if (self::isDemoUser()) {
+                            if (DemoAccess::protects($record)) {
 
                                 return view(
                                     'filament.payments.demo-pix-modal',
@@ -351,7 +346,7 @@ class OrderResource extends Resource
                             ) {
 
                                 $result =
-                                    $service
+                                    app(PaymentService::class)
                                         ->createOrderPix(
                                             $record
                                         );
@@ -435,7 +430,7 @@ class OrderResource extends Resource
 
                     ->visible(
                         fn (Order $record) =>
-                            ! self::isDemoUser()
+                            ! DemoAccess::protects($record)
                             && $record->status
                                 === 'pending'
                             && filled(
@@ -485,7 +480,7 @@ class OrderResource extends Resource
 
                     ->visible(
                         fn (Order $record) =>
-                            ! self::isDemoUser()
+                            ! DemoAccess::protects($record)
                             && $record->status
                                 === 'pending'
                             && filled(
@@ -498,6 +493,7 @@ class OrderResource extends Resource
                         function (
                             Order $record
                         ) {
+                            DemoAccess::ensureAllowed($record);
                             $record->update([
                                 'status' =>
                                     'approved',
@@ -548,6 +544,7 @@ class OrderResource extends Resource
                             Order $record
                         ) {
 
+                            DemoAccess::ensureAllowed($record);
                             $record->update([
                                 'status' =>
                                     'approved',
@@ -592,11 +589,7 @@ class OrderResource extends Resource
                 |
                 */
 
-                Tables\Actions\DeleteAction::make()
-                    ->visible(
-                        fn () =>
-                            ! self::isDemoUser()
-                    ),
+                Tables\Actions\DeleteAction::make(),
 
             ]);
     }

@@ -75,6 +75,10 @@ class User extends Authenticatable implements FilamentUser, HasTenants
      */
     public function getTenants(Panel $panel): Collection
     {
+        if (\App\Support\DemoAccess::isDemoUser($this)) {
+            return \App\Support\DemoAccess::tenantQuery()->where('user_id', $this->id)->get();
+        }
+
         if ($this->isAdmin()) {
             return Barbershop::all();
         }
@@ -89,6 +93,12 @@ class User extends Authenticatable implements FilamentUser, HasTenants
      */
     public function canAccessTenant(Model $tenant): bool
     {
+        if (\App\Support\DemoAccess::isDemoUser($this)) {
+            return $tenant instanceof Barbershop
+                && \App\Support\DemoAccess::isDemoTenant($tenant)
+                && (string) $tenant->user_id === (string) $this->id;
+        }
+
         if ($this->isAdmin()) {
             return true;
         }
@@ -116,6 +126,8 @@ class User extends Authenticatable implements FilamentUser, HasTenants
     public function activeSubscription()
     {
         return $this->hasOne(Subscription::class)
+            ->when(\App\Support\DemoAccess::isDemoUser($this), fn ($query) => $query
+                ->whereIn('barbershop_id', \App\Support\DemoAccess::tenantQuery()->select('id')))
             ->where('status', 'active')
             ->where('expires_at', '>=', now());
     }
@@ -126,7 +138,7 @@ class User extends Authenticatable implements FilamentUser, HasTenants
 
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return $this->role === 'admin' && ! \App\Support\DemoAccess::isDemoUser($this);
     }
 
     public function isBarber(): bool
@@ -139,4 +151,3 @@ class User extends Authenticatable implements FilamentUser, HasTenants
         return $this->role === 'client';
     }
 }
-

@@ -28,6 +28,21 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
+        $exceptions->render(function (Throwable $exception, Request $request) {
+            $forbidden = $exception instanceof \Illuminate\Auth\Access\AuthorizationException
+                || ($exception instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface
+                    && $exception->getStatusCode() === 403);
+
+            if ($forbidden && \App\Support\DemoAccess::isDemoUser()) {
+                return $request->expectsJson() || $request->is('api/*')
+                    ? response()->json(['message' => \App\Support\DemoAccess::MESSAGE], 403)
+                    : response(\App\Support\DemoAccess::MESSAGE, 403)
+                        ->header('Content-Type', 'text/plain; charset=UTF-8');
+            }
+
+            return null;
+        });
+
         // CONFIGURAÇÃO NOVA: Forçar JSON em erros da API
         $exceptions->shouldRenderJsonWhen(function (Request $request, Throwable $e) {
             if ($request->is('api/*')) {

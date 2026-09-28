@@ -6,19 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Models\Subscription;
 use App\Models\Barbershop;
-use App\Models\SaasPlan;
 use App\Notifications\AppointmentConfirmed;
 use App\Services\PaymentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use MercadoPago\MercadoPagoConfig;
 
 class WebhookController extends Controller
 {
     public function __construct(private PaymentService $paymentService)
     {
-        // Inicializa SDK com seu Token
-        MercadoPagoConfig::setAccessToken(config('services.mercadopago.token', env('MERCADO_PAGO_ACCESS_TOKEN')));
+        // Initialize the SDK only after signature and demo checks.
     }
 
     public function handle(Request $request)
@@ -48,6 +47,11 @@ class WebhookController extends Controller
             return response()->json(['status' => 'ignored'], 200);
 
         } catch (\Exception $e) {
+            if ($e instanceof ValidationException
+                && ($e->errors()['demo'] ?? []) === [\App\Support\DemoAccess::MESSAGE]) {
+                return response()->json(['message' => \App\Support\DemoAccess::MESSAGE], 403);
+            }
+
             Log::error('Erro Geral Webhook: ' . $e->getMessage());
             return response()->json(['error' => 'Internal Error'], 500);
         }
@@ -114,6 +118,9 @@ class WebhookController extends Controller
             $subscription = Subscription::where('external_id', $externalId)->first();
 
             if ($subscription) {
+                if (\App\Support\DemoAccess::protects($subscription)) {
+                    return response()->json(['message' => \App\Support\DemoAccess::MESSAGE], 403);
+                }
                 // Se o Webhook diz que foi pago/renovado, resetamos o ciclo
                 $subscription->update([
                     'status'          => 'active',
@@ -144,6 +151,18 @@ class WebhookController extends Controller
             return response()->json(['error' => 'No Payment ID'], 400);
         }
 
+        if (\App\Support\DemoAccess::enabled()) {
+            foreach ([
+                Subscription::where('external_id', $paymentId)->first(),
+                Barbershop::where('saas_payment_id', $paymentId)->first(),
+                Appointment::where('payment_id', $paymentId)->first(),
+            ] as $record) {
+                if (\App\Support\DemoAccess::protects($record)) {
+                    return response()->json(['message' => \App\Support\DemoAccess::MESSAGE], 403);
+                }
+            }
+        }
+
         // 1a. Assinatura de barbershop plan (PIX) — busca ANTES de chamar getPayment
         //     porque o pagamento foi criado com o token da barbearia, não o global.
         $subscription = Subscription::where('external_id', $paymentId)->first();
@@ -169,6 +188,9 @@ class WebhookController extends Controller
             $barbershop = $barbershopId ? Barbershop::find($barbershopId) : null;
 
             if ($barbershop) {
+                if (\App\Support\DemoAccess::protects($barbershop)) {
+                    return response()->json(['message' => \App\Support\DemoAccess::MESSAGE], 403);
+                }
                 if ($planId) {
                     $barbershop->update(['saas_plan_id' => $planId]);
                     $barbershop->refresh();
@@ -205,8 +227,13 @@ class WebhookController extends Controller
      */
     protected function handleSubscriptionPixPayment(string $paymentId, Subscription $subscription): \Illuminate\Http\JsonResponse
     {
+        \App\Support\DemoAccess::ensureAllowed($subscription);
         try {
             $barbershop = $subscription->plan?->barbershop;
+
+            if (\App\Support\DemoAccess::protects($barbershop)) {
+                return response()->json(['message' => \App\Support\DemoAccess::MESSAGE], 403);
+            }
 
             if (!$barbershop || empty($barbershop->mp_access_token)) {
                 Log::warning('Webhook sub PIX: barbearia sem token MP', ['subscription_id' => $subscription->id]);
@@ -255,6 +282,7 @@ class WebhookController extends Controller
      */
     protected function handleSaasPayment(object $payment, Barbershop $barbershop)
     {
+        \App\Support\DemoAccess::ensureAllowed($barbershop);
         if ($payment->status !== 'approved') {
             return response()->json(['status' => 'saas_payment_pending'], 200);
         }
@@ -291,4 +319,5 @@ class WebhookController extends Controller
         ]);
 
         return response()->json(['status' => 'saas_activated'], 200);
-    }}
+    }
+}

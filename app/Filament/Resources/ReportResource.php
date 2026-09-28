@@ -9,7 +9,6 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables\Actions\Action;
-use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -28,7 +27,7 @@ class ReportResource extends Resource
     // Apenas admins veem este resource
     public static function canAccess(): bool
     {
-        return auth()->user()?->role === 'admin';
+        return auth()->user()?->isAdmin() ?? false;
     }
 
     public static function form(Form $form): Form

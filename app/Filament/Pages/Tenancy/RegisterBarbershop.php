@@ -11,6 +11,23 @@ use Illuminate\Support\Str;
 
 class RegisterBarbershop extends RegisterTenant
 {
+    public static function canView(): bool
+    {
+        return ! \App\Support\DemoAccess::isDemoUser() && parent::canView();
+    }
+
+    public function mount(): void
+    {
+        abort_if(\App\Support\DemoAccess::isDemoUser(), 403, \App\Support\DemoAccess::MESSAGE);
+        parent::mount();
+    }
+
+    public function hydrate(): void
+    {
+        abort_if(\App\Support\DemoAccess::isDemoUser(), 403, \App\Support\DemoAccess::MESSAGE);
+        parent::hydrate();
+    }
+
     public static function getLabel(): string
     {
         return 'Criar sua Barbearia';
@@ -54,6 +71,7 @@ class RegisterBarbershop extends RegisterTenant
      */
     protected function handleRegistration(array $data): Barbershop
     {
+        \App\Support\DemoAccess::ensureAllowed();
         $user = auth()->user();
         $userTrialEndsAt = $user->trial_ends_at;
 

@@ -27,6 +27,8 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class BarbershopResource extends Resource
 {
+    use \App\Filament\Concerns\ProtectsDemoRecords;
+
     protected static ?string $model = Barbershop::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-home-modern';
@@ -159,6 +161,7 @@ class BarbershopResource extends Resource
                     ]),
 
                 Section::make('Recebimento via PIX')
+                    ->hidden(fn () => \App\Support\DemoAccess::protects(filament()->getTenant()))
                     ->description('Configure sua chave PIX para receber pagamentos dos clientes diretamente na sua conta.')
                     ->icon('heroicon-o-banknotes')
                     ->schema([
@@ -181,6 +184,7 @@ class BarbershopResource extends Resource
                     ])->columns(2),
 
                 Section::make('MercadoPago — Recebimento de Assinaturas')
+                    ->hidden(fn () => \App\Support\DemoAccess::protects(filament()->getTenant()))
                     ->description('Configure as credenciais da sua conta MercadoPago para receber pagamentos de assinaturas (PIX e cartão) diretamente na sua conta.')
                     ->icon('heroicon-o-credit-card')
                     ->schema([
@@ -200,7 +204,7 @@ class BarbershopResource extends Resource
                             // $hidden no model impede toArray() de incluir este campo.
                             // Carregamos diretamente do atributo para que o Filament saiba que já existe valor.
                             ->afterStateHydrated(function ($component, $record) {
-                                if ($record) {
+                                if ($record && ! \App\Support\DemoAccess::protects($record)) {
                                     $component->state($record->getRawOriginal('mp_access_token'));
                                 }
                             })
@@ -282,10 +286,24 @@ class BarbershopResource extends Resource
         // Admin vê todas; barber vê apenas a sua própria
         $user = auth()->user();
 
+        if (\App\Support\DemoAccess::isDemoUser($user)) {
+            return \App\Support\DemoAccess::tenantQuery()->where('user_id', $user->id);
+        }
+
         if ($user?->isAdmin()) {
             return Barbershop::query();
         }
 
         return Barbershop::query()->where('user_id', $user?->id);
+    }
+
+    public static function canCreate(): bool
+    {
+        return ! \App\Support\DemoAccess::isDemoUser() && parent::canCreate();
+    }
+
+    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
+    {
+        return ! \App\Support\DemoAccess::protects($record) && parent::canEdit($record);
     }
 }

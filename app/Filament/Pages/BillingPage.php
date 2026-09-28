@@ -7,7 +7,6 @@ use App\Services\PaymentService;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Illuminate\Support\Facades\Log;
 
 class BillingPage extends Page
 {
@@ -30,6 +29,9 @@ class BillingPage extends Page
 
     public function mount(): void
     {
+        if (\App\Support\DemoAccess::protects($this->getBarbershop())) {
+            return;
+        }
         // Se já há um PIX pendente salvo, restaura o estado para o usuário não perder o QR
         $barbershop = $this->getBarbershop();
         if ($barbershop->saas_payment_id && !$barbershop->isSubscriptionActive()) {
@@ -56,6 +58,7 @@ class BillingPage extends Page
      */
     public function selectPlan(int $planId): void
     {
+        \App\Support\DemoAccess::ensureAllowed($this->getBarbershop());
         $barbershop = $this->getBarbershop();
         $plan       = SaasPlan::findOrFail($planId);
 
@@ -87,6 +90,7 @@ class BillingPage extends Page
 
     public function checkoutWithCard(int $planId)
     {
+        \App\Support\DemoAccess::ensureAllowed($this->getBarbershop());
         $barbershop = $this->getBarbershop();
         $plan = SaasPlan::findOrFail($planId);
 
@@ -113,6 +117,9 @@ class BillingPage extends Page
      */
     public function checkPayment(): void
     {
+        if (\App\Support\DemoAccess::protects($this->getBarbershop())) {
+            return;
+        }
         if (!$this->paymentId) {
             return;
         }
@@ -176,6 +183,7 @@ class BillingPage extends Page
      */
     public function initiateCardPayment(int $planId): void
     {
+        \App\Support\DemoAccess::ensureAllowed($this->getBarbershop());
         $this->selectedPlanId = $planId;
         $this->paymentId      = null;
         $this->pixQrCode      = null;
@@ -197,6 +205,7 @@ class BillingPage extends Page
      */
     public function processCardPayment(int $planId, array $formData): void
     {
+        \App\Support\DemoAccess::ensureAllowed($this->getBarbershop());
         $barbershop = $this->getBarbershop();
         $plan       = SaasPlan::findOrFail($planId);
 
@@ -248,6 +257,7 @@ class BillingPage extends Page
 
     public function cancelSubscription(): void
     {
+        \App\Support\DemoAccess::ensureAllowed($this->getBarbershop());
         $barbershop = $this->getBarbershop();
         $expiresAt  = $barbershop->subscription_expires_at?->format('d/m/Y');
         $barbershop->update(['subscription_status' => 'cancelled']);

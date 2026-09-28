@@ -5,6 +5,7 @@ namespace App\Filament\Resources\OrderResource\Pages;
 use App\Filament\Resources\OrderResource;
 use App\Models\Order;
 use App\Models\Product;
+use App\Support\DemoAccess;
 use Filament\Actions;
 use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
@@ -13,6 +14,12 @@ use Filament\Resources\Pages\EditRecord;
 class EditOrder extends EditRecord
 {
     protected static string $resource = OrderResource::class;
+
+    protected function beforeValidate(): void
+    {
+        // Run before the form saves relationships or applies inventory changes.
+        DemoAccess::ensureAllowed($this->record);
+    }
 
     protected function mutateFormDataBeforeSave(array $data): array
     {

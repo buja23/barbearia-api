@@ -22,6 +22,8 @@ class MercadoPagoOAuthController extends Controller
         $user       = auth()->user();
         $barbershop = Barbershop::where('user_id', $user->id)->firstOrFail();
 
+        abort_if(\App\Support\DemoAccess::protects($barbershop), 403, \App\Support\DemoAccess::MESSAGE);
+
         // Gera estado aleatório para proteção CSRF
         $state = Str::random(40);
         $barbershop->update(['mp_oauth_state' => $state]);
@@ -61,6 +63,8 @@ class MercadoPagoOAuthController extends Controller
             return redirect('/admin/barbershops')
                 ->with('error', 'Link de autorização expirado. Tente novamente.');
         }
+
+        abort_if(\App\Support\DemoAccess::protects($barbershop), 403, \App\Support\DemoAccess::MESSAGE);
 
         // Troca o code pelo access_token
         $response = Http::asForm()->post('https://api.mercadopago.com/oauth/token', [
@@ -105,12 +109,15 @@ class MercadoPagoOAuthController extends Controller
      */
     public function disconnect(Request $request)
     {
+        abort_if(\App\Support\DemoAccess::isDemoUser(), 403, \App\Support\DemoAccess::MESSAGE);
         if (!auth()->check()) {
             return redirect('/admin/login');
         }
 
         $user       = auth()->user();
         $barbershop = Barbershop::where('user_id', $user->id)->firstOrFail();
+
+        abort_if(\App\Support\DemoAccess::protects($barbershop), 403, \App\Support\DemoAccess::MESSAGE);
 
         $barbershop->update([
             'mp_access_token' => null,

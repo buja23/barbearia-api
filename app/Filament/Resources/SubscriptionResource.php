@@ -16,14 +16,14 @@ use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Filters\SelectFilter;
-use Carbon\Carbon;
 use Filament\Facades\Filament;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Database\Eloquent\Builder;
-use App\Models\Subscription as SubscriptionModel;
 
 class SubscriptionResource extends Resource
 {
+    use \App\Filament\Concerns\ProtectsDemoRecords;
+
     protected static ?string $model = Subscription::class;
     protected static ?string $navigationIcon = 'heroicon-o-credit-card';
     protected static ?string $navigationGroup = 'Financeiro';
@@ -47,6 +47,7 @@ class SubscriptionResource extends Resource
                                         $tenant = Filament::getTenant();
 
                                         return User::query()
+                                            ->when(\App\Support\DemoAccess::isDemoUser(), fn (Builder $query) => $query->where('barbershop_id', $tenant?->id))
                                             ->where('role', 'client')
                                             ->when($tenant, fn (Builder $query) => $query->where(function (Builder $q) use ($tenant) {
                                                 // Clientes já vinculados à barbearia OU ainda sem vínculo (recém-cadastrados)
@@ -183,7 +184,7 @@ class SubscriptionResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
-                    ->url(fn (SubscriptionModel $record): string => static::getUrl('edit', [
+                    ->url(fn (Subscription $record): string => static::getUrl('edit', [
                         'record' => $record,
                         'tenant' => Filament::getTenant()?->slug,
                     ])),
@@ -210,6 +211,7 @@ class SubscriptionResource extends Resource
 
         // Aceita clientes já vinculados à barbearia OU sem vínculo ainda (barbershop_id null)
         $isValid = User::query()
+            ->when(\App\Support\DemoAccess::isDemoUser(), fn (Builder $query) => $query->where('barbershop_id', $tenant->id))
             ->whereKey($userId)
             ->where('role', 'client')
             ->where(function (Builder $q) use ($tenant) {

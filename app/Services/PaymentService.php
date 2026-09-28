@@ -18,10 +18,13 @@ use Piggly\Pix\Parser;
 
 class PaymentService
 {
-    public function __construct()
+    private function configureGlobalToken(): void
     {
-        // Garante que o token venha do .env
-        MercadoPagoConfig::setAccessToken(config('services.mercadopago.token', env('MERCADO_PAGO_ACCESS_TOKEN')));
+        $token = config('services.mercadopago.token') ?: env('MERCADO_PAGO_ACCESS_TOKEN');
+        if (! is_string($token) || trim($token) === '') {
+            throw new \RuntimeException('A integração de pagamento não está configurada.');
+        }
+        MercadoPagoConfig::setAccessToken($token);
     }
 
     /**
@@ -29,7 +32,10 @@ class PaymentService
      */
     public function createPixPayment(Appointment $appointment): array
     {
+        \App\Support\DemoAccess::ensureAllowed($appointment);
+
         try {
+            $this->configureGlobalToken();
             $client = new PaymentClient();
 
             // Proteção: Preço deve ser positivo
@@ -120,10 +126,14 @@ class PaymentService
      */
     public function createSubscriptionPix(Subscription $subscription): array
     {
+        \App\Support\DemoAccess::ensureAllowed($subscription);
+
         try {
             $plan       = $subscription->plan;
             $barbershop = $plan->barbershop;
             $user       = $subscription->user;
+
+            \App\Support\DemoAccess::ensureAllowed($barbershop);
 
             if (empty($barbershop->mp_access_token)) {
                 return [
@@ -197,10 +207,14 @@ class PaymentService
      */
     public function createSubscriptionCard(Subscription $subscription, string $cardToken, int $installments = 1): array
     {
+        \App\Support\DemoAccess::ensureAllowed($subscription);
+
         try {
             $plan       = $subscription->plan;
             $barbershop = $plan->barbershop;
             $user       = $subscription->user;
+
+            \App\Support\DemoAccess::ensureAllowed($barbershop);
 
             if (empty($barbershop->mp_access_token)) {
                 return [
@@ -276,12 +290,25 @@ class PaymentService
      */
     public function getPayment(string $paymentId): object
     {
+        \App\Support\DemoAccess::ensureAllowed();
+        if (\App\Support\DemoAccess::enabled()) {
+            foreach ([
+                Appointment::where('payment_id', $paymentId)->first(),
+                Barbershop::where('saas_payment_id', $paymentId)->first(),
+                Subscription::where('external_id', $paymentId)->first(),
+            ] as $record) {
+                \App\Support\DemoAccess::ensureAllowed($record);
+            }
+        }
+        $this->configureGlobalToken();
         $client = new PaymentClient();
         return $client->get($paymentId);
     }
 
     public function createOrderPix(Order $order): array
     {
+        \App\Support\DemoAccess::ensureAllowed($order);
+
         try {
             $barbershop = $order->barbershop;
 
@@ -343,7 +370,10 @@ class PaymentService
      */
     public function createSaasPix(Barbershop $barbershop, SaasPlan $plan): array
     {
+        \App\Support\DemoAccess::ensureAllowed($barbershop);
+
         try {
+            $this->configureGlobalToken();
             $client = new PaymentClient();
             $user   = $barbershop->user;
             $cpf    = $user->cpf ?? env('MERCADOS_PAGO_TEST_CPF', '19119119100');
@@ -414,7 +444,10 @@ class PaymentService
 
     public function createSaasCardCheckout(Barbershop $barbershop, SaasPlan $plan): array
     {
+        \App\Support\DemoAccess::ensureAllowed($barbershop);
+
         try {
+            $this->configureGlobalToken();
             $client = new PreferenceClient();
             $user = $barbershop->user;
             $billingUrl = route('filament.admin.pages.billing', ['tenant' => $barbershop->slug]);
@@ -511,7 +544,10 @@ class PaymentService
      */
     public function createSaasCardPayment(Barbershop $barbershop, SaasPlan $plan, array $formData): array
     {
+        \App\Support\DemoAccess::ensureAllowed($barbershop);
+
         try {
+            $this->configureGlobalToken();
             $client = new PaymentClient();
             $user   = $barbershop->user;
 
@@ -598,6 +634,8 @@ class PaymentService
      */
     public function generateLocalPixPayment(Appointment $appointment): array
     {
+        \App\Support\DemoAccess::ensureAllowed($appointment);
+
         $barbershop = $appointment->barbershop;
 
         if (empty($barbershop?->pix_key)) {

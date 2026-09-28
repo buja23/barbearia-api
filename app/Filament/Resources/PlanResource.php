@@ -9,10 +9,11 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 
 class PlanResource extends Resource
 {
+    use \App\Filament\Concerns\ProtectsDemoRecords;
+
     protected static ?string $model = Plan::class;
     protected static ?string $navigationIcon = 'heroicon-o-ticket';
     protected static ?string $navigationGroup = 'Financeiro';

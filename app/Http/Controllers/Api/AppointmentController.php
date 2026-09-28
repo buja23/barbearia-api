@@ -45,6 +45,8 @@ class AppointmentController extends Controller
         $user = $request->user();
 
         $appointments = Appointment::with(['barber.barbershop', 'service']) // <--- O PULO DO GATO
+            ->when(\App\Support\DemoAccess::isDemoUser($user), fn ($query) => $query
+                ->whereIn('barbershop_id', \App\Support\DemoAccess::tenantQuery()->select('id')))
             ->where('user_id', $user->id)
             ->orderBy('scheduled_at', 'desc')
             ->get();

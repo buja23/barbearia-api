@@ -5,7 +5,6 @@ use App\Filament\Resources\BarberResource\Pages;
 use App\Models\Barber;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\Toggle;
@@ -20,6 +19,8 @@ use Filament\Tables\Table;
 
 class BarberResource extends Resource
 {
+    use \App\Filament\Concerns\ProtectsDemoRecords;
+
     protected static ?string $model = Barber::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-users';

@@ -24,6 +24,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class AppointmentResource extends Resource
 {
+    use \App\Filament\Concerns\ProtectsDemoRecords;
+
     protected static ?string $model            = Appointment::class;
     protected static ?string $navigationIcon   = 'heroicon-o-calendar-days';
     protected static ?string $navigationLabel  = 'Agendamentos';
@@ -41,7 +43,7 @@ class AppointmentResource extends Resource
                     ->description('Selecione o barbeiro e a data para visualizar horários disponíveis.')
                     ->schema([
                         Select::make('barber_id')
-                            ->relationship('barber', 'name')
+                            ->relationship('barber', 'name', modifyQueryUsing: fn (Builder $query) => static::scopeDemoOptions($query))
                             ->required()
                             ->live()
                             ->label('Barbeiro'),
@@ -68,7 +70,14 @@ class AppointmentResource extends Resource
                                     return [];
                                 }
 
-                                $barber = \App\Models\Barber::find($barberId);
+                                $barber = static::scopeDemoOptions(\App\Models\Barber::query())->find($barberId);
+                                if (! $barber) {
+                                    return [];
+                                }
+                                if (\App\Support\DemoAccess::isDemoUser()
+                                    && ! static::scopeDemoOptions(\App\Models\Service::query())->whereKey($serviceId)->exists()) {
+                                    \App\Support\DemoAccess::deny();
+                                }
                                 return collect($service->getAvailableSlots($barber, $date, $serviceId))
                                     ->mapWithKeys(fn($slot) => [$slot => $slot])
                                     ->toArray();
@@ -98,11 +107,11 @@ class AppointmentResource extends Resource
                 Section::make('Detalhes do Serviço')
                     ->schema([
                         Select::make('service_id')
-                            ->relationship('service', 'name')
+                            ->relationship('service', 'name', modifyQueryUsing: fn (Builder $query) => static::scopeDemoOptions($query))
                             ->required()
                             ->live()
                             ->afterStateUpdated(function ($state, Set $set) {
-                                $service = \App\Models\Service::find($state);
+                                $service = static::scopeDemoOptions(\App\Models\Service::query())->find($state);
                                 if ($service) {
                                     $set('total_price', $service->price);
                                 }
@@ -241,6 +250,7 @@ public static function table(Table $table): Table
                 ->color('info') // Botão Azul
                 ->button()      // Estilo botão cheio para chamar atenção
                 ->visible(fn(Appointment $record) => $record->status === 'pending')
+                ->before(fn (Appointment $record) => \App\Support\DemoAccess::ensureAllowed($record))
                 ->action(fn(Appointment $record) => $record->update(['status' => 'confirmed']))
                 ->successNotificationTitle('Agendamento Confirmado!'),
 
@@ -254,6 +264,7 @@ public static function table(Table $table): Table
                     ->modalHeading('Receber em Dinheiro')
                     ->modalDescription('Confirmar o recebimento do valor total em dinheiro?')
                     ->visible(fn(Appointment $record) => $record->payment_status !== 'approved' && $record->status !== 'canceled')
+                    ->before(fn (Appointment $record) => \App\Support\DemoAccess::ensureAllowed($record))
                     ->action(fn(Appointment $record) => $record->update([
                         'payment_status' => 'approved',
                         'payment_method' => 'cash' // Registra que foi dinheiro
@@ -269,6 +280,10 @@ public static function table(Table $table): Table
                 ->visible(fn(Appointment $record) => $record->payment_status !== 'approved' && $record->status !== 'canceled' && $record->status !== 'completed')
                 ->modalHeading('Receber via Pix')
                 ->modalContent(function (Appointment $record) {
+                    if (\App\Support\DemoAccess::protects($record)) {
+                        return view('filament.payments.demo-pix-modal', ['record' => $record]);
+                    }
+
                     $barbershop = $record->barbershop;
 
                     // Sem chave PIX cadastrada: bloqueia e orienta o dono
@@ -280,7 +295,7 @@ public static function table(Table $table): Table
 
                     // Gera (ou REgera) QR Code — sempre regenera se o payload antigo nao tem '***'
                     if (empty($record->pix_copy_paste) || $record->payment_method !== 'pix' || !str_contains($record->pix_copy_paste, '***')) {
-                        $result = $service->generateLocalPixPayment($record);
+                        $result = app(PaymentService::class)->generateLocalPixPayment($record);
                         if (! $result['success']) {
                             Notification::make()->title('Erro PIX')->body($result['error'])->danger()->send();
                             return view('filament.payments.error-modal', ['error' => $result['error']]);
@@ -308,6 +323,7 @@ public static function table(Table $table): Table
                 ->requiresConfirmation()
                 ->modalHeading('Confirmar Pagamento PIX')
                 ->modalDescription('O cliente realizou o pagamento? Confirme para registrar como pago.')
+                ->before(fn (Appointment $record) => \App\Support\DemoAccess::ensureAllowed($record))
                 ->action(fn(Appointment $record) => $record->update(['payment_status' => 'approved'])),
 
                 // 4. FINALIZAR ATENDIMENTO (Só aparece se confirmado)
@@ -318,6 +334,7 @@ public static function table(Table $table): Table
                     ->iconButton()
                     ->visible(fn(Appointment $record) => $record->status === 'confirmed')
                     ->requiresConfirmation()
+                    ->before(fn (Appointment $record) => \App\Support\DemoAccess::ensureAllowed($record))
                     ->action(fn(Appointment $record) => $record->update(['status' => 'completed'])),
 
 
@@ -331,6 +348,7 @@ public static function table(Table $table): Table
                     ->color('danger')
                     ->requiresConfirmation()
                     ->visible(fn(Appointment $record) => !in_array($record->status, ['canceled', 'no_show']))
+                    ->before(fn (Appointment $record) => \App\Support\DemoAccess::ensureAllowed($record))
                     ->action(fn(Appointment $record) => $record->update(['status' => 'no_show'])),
                     
                 Tables\Actions\Action::make('cancel')
@@ -338,6 +356,7 @@ public static function table(Table $table): Table
                     ->icon('heroicon-o-trash')
                     ->color('danger')
                     ->requiresConfirmation()
+                    ->before(fn (Appointment $record) => \App\Support\DemoAccess::ensureAllowed($record))
                     ->action(fn(Appointment $record) => $record->update(['status' => 'canceled'])),
             ]),
         ])
@@ -345,6 +364,12 @@ public static function table(Table $table): Table
             Tables\Actions\DeleteBulkAction::make(),
         ]);
 }
+
+    protected static function scopeDemoOptions(Builder $query): Builder
+    {
+        return $query->when(\App\Support\DemoAccess::isDemoUser(), fn (Builder $query) => $query
+            ->whereIn('barbershop_id', \App\Support\DemoAccess::tenantQuery()->select('id')));
+    }
 
     /**
      * Informa ao Filament qual relacionamento usar para o scoping por tenant.

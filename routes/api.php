@@ -14,6 +14,8 @@ use App\Http\Controllers\Api\ResetPasswordController;
 use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\SupportController;
 
+Route::middleware(\App\Http\Middleware\ProtectDemoApi::class)->group(function () {
+
 /* --- 1. Autenticação (Global) com Rate Limiting --- */
 Route::middleware('throttle:' . env('RATE_LIMIT_AUTH', 5) . ',1')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
@@ -61,4 +63,6 @@ Route::prefix('{slug}')->middleware('throttle:30,1')->group(function () {
     Route::get('/services', [ServiceController::class, 'index']);
     Route::get('/barbers', [BarberController::class, 'index']);
     Route::get('/slots', [AppointmentController::class, 'getAvailableSlots']);
+});
+
 });

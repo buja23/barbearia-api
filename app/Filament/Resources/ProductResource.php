@@ -21,6 +21,8 @@ use Illuminate\Support\Facades\DB;
 
 class ProductResource extends Resource
 {
+    use \App\Filament\Concerns\ProtectsDemoRecords;
+
     protected static ?string $model           = Product::class;
     protected static ?string $navigationIcon  = 'heroicon-o-cube';
     protected static ?string $navigationLabel = 'Estoque de Produtos';
@@ -147,7 +149,8 @@ class ProductResource extends Resource
                             ->label('Quantidade')
                             ->numeric()->default(1)->minValue(1)->required(),
                     ])
-                    ->action(function (Product $record, array $data, PaymentService $paymentService) { // Injetamos o PaymentService
+                    ->action(function (Product $record, array $data) {
+                        \App\Support\DemoAccess::ensureAllowed($record);
                         $qtd = (int) $data['quantity_out'];
 
                         if ($record->quantity < $qtd) {
@@ -177,7 +180,7 @@ class ProductResource extends Resource
                                 return $order;
                             });
 
-                            $result = $paymentService->createOrderPix($order);
+                            $result = app(PaymentService::class)->createOrderPix($order);
 
                             if (! ($result['success'] ?? false)) {
                                 Notification::make()

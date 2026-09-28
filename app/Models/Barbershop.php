@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsTo as BelongsToAlias;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Barbershop extends Model
@@ -41,6 +40,7 @@ class Barbershop extends Model
      * Proteção contra vazamento acidental de dados sensíveis de pagamento.
      */
     protected $hidden = [
+        'mp_oauth_state',
         'saas_pix_copy_paste',
         'saas_pix_qr_code',
         'saas_payment_id',
