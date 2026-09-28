@@ -88,16 +88,18 @@ class AuthController extends Controller
         $user      = $request->user();
         $validated = $request->validated();
 
-        // Se o email foi alterado, reseta verificação
-        if ($user->email !== $validated['email']) {
-            $validated['email_verified_at'] = null;
-        }
-
-        $user->update([
+        $attributes = [
             'name'               => $validated['name'],
             'email'              => $validated['email'],
-            'email_verified_at'  => $validated['email_verified_at'] ?? $user->email_verified_at,
-        ]);
+            'email_verified_at'  => $user->email !== $validated['email'] ? null : $user->email_verified_at,
+        ];
+
+        if (! empty($validated['password'])) {
+            $attributes['password'] = Hash::make($validated['password']);
+        }
+
+        // email_verified_at is an internal attribute, not a mass-assignable input.
+        $user->forceFill($attributes)->save();
 
         return response()->json([
             'message' => 'Perfil atualizado com sucesso!',

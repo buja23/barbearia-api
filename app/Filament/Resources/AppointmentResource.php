@@ -160,7 +160,10 @@ public static function table(Table $table): Table
                 ->getStateUsing(fn($record) => $record->client_name ?? $record->user?->name)
                 ->description(fn($record) => $record->service?->name) // Mostra o serviço embaixo
                 ->weight('bold') // Negrito para destaque
-                ->searchable(),
+                ->searchable(query: fn (Builder $query, string $search): Builder => $query
+                    ->where(fn (Builder $query) => $query
+                        ->where('client_name', 'like', "%{$search}%")
+                        ->orWhereHas('user', fn (Builder $query) => $query->where('name', 'like', "%{$search}%")))),
 
             Tables\Columns\TextColumn::make('scheduled_at')
                 ->label('Horário')

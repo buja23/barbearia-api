@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -143,5 +144,39 @@ class AuthTest extends TestCase
                 ->assertJsonPath('user.name', 'Novo Nome');
 
         $this->assertDatabaseHas('users', ['email' => 'novo@example.com', 'name' => 'Novo Nome']);
+        $this->assertNull($user->fresh()->email_verified_at);
+    }
+
+    #[Test]
+    public function profile_update_persists_hashed_password_and_preserves_unchanged_email_verification(): void
+    {
+        $user = User::factory()->create();
+        $verifiedAt = $user->email_verified_at;
+        $token = $user->createToken('profile-test')->plainTextToken;
+
+        $this->withToken($token)->putJson('/api/user', [
+            'name' => 'Nome atualizado', 'email' => $user->email,
+            'current_password' => 'password', 'password' => 'NovaSenha12345',
+            'password_confirmation' => 'NovaSenha12345',
+        ])->assertOk()->assertJsonStructure(['message', 'user'])->assertJsonMissingPath('user.password');
+
+        $user->refresh();
+        $this->assertTrue(Hash::check('NovaSenha12345', $user->password));
+        $this->assertNotSame('NovaSenha12345', $user->password);
+        $this->assertTrue($verifiedAt->equalTo($user->email_verified_at));
+    }
+
+    #[Test]
+    public function wrong_current_password_does_not_change_profile_or_password(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user)->putJson('/api/user', [
+            'name' => 'Nome bloqueado', 'email' => $user->email,
+            'current_password' => 'incorrect', 'password' => 'NovaSenha12345',
+            'password_confirmation' => 'NovaSenha12345',
+        ])->assertUnprocessable()->assertJsonValidationErrors('current_password');
+
+        $this->assertSame($user->name, $user->fresh()->name);
+        $this->assertTrue(Hash::check('password', $user->fresh()->password));
     }
 }

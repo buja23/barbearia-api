@@ -6,11 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreAppointmentRequest;
 use App\Models\Appointment;
 use App\Models\Barber;
+use App\Models\Barbershop;
 use App\Models\Service;
 use App\Services\BookingService;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class AppointmentController extends Controller
 {
@@ -20,17 +23,19 @@ class AppointmentController extends Controller
      */
     public function getAvailableSlots(Request $request, $slug = null)
     {
-        $request->validate([
+        $barbershop = Barbershop::where('slug', $slug)->firstOrFail();
+
+        $data = $request->validate([
             'date'       => 'required|date_format:Y-m-d',
-            'barber_id'  => 'required|integer|exists:barbers,id',
-            'service_id' => 'required|integer|exists:services,id',
+            'barber_id'  => ['required', 'integer', Rule::exists('barbers', 'id')->where('barbershop_id', $barbershop->id)],
+            'service_id' => ['required', 'integer', Rule::exists('services', 'id')->where('barbershop_id', $barbershop->id)],
         ]);
 
-        $barber = Barber::findOrFail($request->query('barber_id'));
+        $barber = Barber::where('barbershop_id', $barbershop->id)->findOrFail($data['barber_id']);
         $slots  = (new BookingService())->getAvailableSlots(
             $barber,
-            $request->query('date'),
-            (int) $request->query('service_id')
+            $data['date'],
+            (int) $data['service_id']
         );
 
         return response()->json($slots);
@@ -61,34 +66,54 @@ class AppointmentController extends Controller
     {
         $data = $request->validated();
 
-        $user    = $request->user();
-        $barber  = Barber::findOrFail($data['barber_id']);
-        $service = Service::findOrFail($data['service_id']);
+        return DB::transaction(function () use ($data, $request) {
+            $user    = $request->user();
+            // Serialize API bookings for this professional before checking availability.
+            $barber  = Barber::whereKey($data['barber_id'])->lockForUpdate()->firstOrFail();
+            $service = Service::where('barbershop_id', $barber->barbershop_id)->find($data['service_id']);
 
-        // Verifica assinatura
-        $subscription = $user->activeSubscription;
-        $plan         = $subscription ? $subscription->plan : null;
-        $limit        = $plan ? ($plan->cuts_per_month ?? 999) : 0;
-        $hasBalance   = $subscription && ($subscription->uses_this_month < $limit);
+            if (! $service) {
+                throw ValidationException::withMessages([
+                    'service_id' => 'Selecione um serviço da mesma barbearia do barbeiro.',
+                ]);
+            }
 
-        $finalPrice = $service->price;
-        $notes      = null;
-        $message    = 'Agendamento confirmado!';
+            // Verifica assinatura
+            $subscription = $user->activeSubscription()
+                ->where('barbershop_id', $barber->barbershop_id)->first();
+            $plan         = $subscription ? $subscription->plan : null;
+            $limit        = $plan ? ($plan->cuts_per_month ?? 999) : 0;
+            $hasBalance   = $subscription && ($subscription->uses_this_month < $limit);
 
-        if ($subscription && $hasBalance) {
-            $finalPrice = 0.00;
-            $message    = 'Agendado via assinatura!';
-            $notes      = 'Pago pelo plano ' . $plan->name;
-        } elseif ($subscription && !$hasBalance) {
-            $message = 'Limite do plano atingido. Cobrança avulsa gerada.';
-            $notes   = 'Excedente do plano';
-        }
+            $finalPrice = $service->price;
+            $notes      = null;
+            $message    = 'Agendamento confirmado!';
 
-        $start    = Carbon::parse($data['scheduled_at']);
-        $duration = $service->duration_minutes ?? 30;
-        $end      = $start->copy()->addMinutes($duration);
+            if ($subscription && $hasBalance) {
+                $finalPrice = 0.00;
+                $message    = 'Agendado via assinatura!';
+                $notes      = 'Pago pelo plano ' . $plan->name;
+            } elseif ($subscription && !$hasBalance) {
+                $message = 'Limite do plano atingido. Cobrança avulsa gerada.';
+                $notes   = 'Excedente do plano';
+            }
 
-        return DB::transaction(function () use ($data, $user, $barber, $service, $start, $end, $finalPrice, $subscription, $hasBalance, $message, $notes) {
+            $start    = Carbon::parse($data['scheduled_at']);
+            $duration = $service->duration_minutes ?? 30;
+            $end      = $start->copy()->addMinutes($duration);
+
+            $slots = (new BookingService())->getAvailableSlots($barber, $start->toDateString(), $service->id);
+            $hasConflict = Appointment::where('barber_id', $barber->id)
+                ->whereIn('status', ['confirmed', 'pending', 'completed'])
+                ->where('scheduled_at', '<', $end)
+                ->where('end_at', '>', $start)
+                ->exists();
+
+            if ($start->second !== 0 || ! in_array($start->format('H:i'), $slots, true) || $hasConflict) {
+                throw ValidationException::withMessages([
+                    'scheduled_at' => 'Este horário não está disponível. Selecione outro horário.',
+                ]);
+            }
 
             $appointment = Appointment::create([
                 'user_id'       => $user->id,

@@ -127,14 +127,14 @@
 <body>
     <main class="container">
         <section class="hero">
-            <span class="badge">Agendamento online</span>
+            <span class="badge">Conheça nossa barbearia</span>
 
             <h1>{{ $barbershop->name }}</h1>
 
             @if (!empty($barbershop->description))
                 <p class="description">{{ $barbershop->description }}</p>
             @else
-                <p class="description">Escolha sua barbearia e em breve finalize seu agendamento online pelo BarberEasy.</p>
+                <p class="description">Confira nossas informações e entre em contato para saber mais sobre nossos serviços.</p>
             @endif
 
             <div class="grid">
@@ -148,14 +148,10 @@
                     <p>{{ $barbershop->address ?: 'Não informado' }}</p>
                 </article>
 
-                <article class="card">
-                    <h2>Slug</h2>
-                    <p>{{ $barbershop->slug }}</p>
-                </article>
             </div>
 
             <div class="empty">
-                A página pública foi criada para eliminar o erro 500 de view não encontrada. Você já pode evoluir esta tela com serviços, barbeiros, horários e formulário de reserva.
+                Para informações sobre serviços e horários, entre em contato com a barbearia pelo telefone informado acima.
             </div>
 
             <p class="footer">BarberEasy © {{ now()->year }}</p>
