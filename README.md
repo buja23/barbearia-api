@@ -8,14 +8,6 @@ O projeto foi criado como portfólio técnico para demonstrar integração entre
 
 ---
 
-## Download do APK
-
-A versão Android de demonstração é publicada através do **GitHub Releases**:
-
-https://github.com/Diogordo08/barber-mobile/releases
-
-Abra a release mais recente e baixe o arquivo `.apk`.
-
 > No Android, pode ser necessário permitir a instalação de aplicativos provenientes do navegador ou gerenciador de arquivos utilizado para abrir o APK.
 
 ---
