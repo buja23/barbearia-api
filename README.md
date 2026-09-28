@@ -1,378 +1,145 @@
-# Desempenho da aplicação publicada
+# Barber Easy — Aplicativo Mobile
 
-A versão pública deste projeto utiliza uma infraestrutura econômica/gratuita, adequada para demonstrações de portfólio.
+Aplicativo mobile do ecossistema **Barber Easy**, desenvolvido com **React Native + Expo** e integrado a uma API em **Laravel**.
 
-Quando a aplicação fica algum tempo sem receber acessos, alguns recursos da hospedagem podem precisar ser inicializados novamente no próximo acesso.
+O projeto foi criado como portfólio técnico para demonstrar integração entre aplicativo mobile e backend, autenticação, consumo de API REST, persistência de sessão, navegação, agendamentos, planos e experiência multi-tenant para barbearias.
 
-Esse processo pode envolver:
-
-- inicialização do container da aplicação;
-- inicialização do Apache e PHP;
-- carregamento das configurações e caches do Laravel;
-- conexão com o banco PostgreSQL externo;
-- execução das verificações configuradas no startup.
-
-Por esse motivo, o primeiro acesso após um período de inatividade pode ser perceptivelmente mais lento.
-
-Após a aplicação estar ativa, as próximas requisições normalmente são processadas com muito menos latência.
-
-## Cenário de implantação comercial
-
-Para um ambiente comercial, este projeto foi pensado para utilizar uma infraestrutura permanentemente ativa e com recursos dedicados.
-
-Uma das arquiteturas consideradas para produção seria:
-
-- **Laravel Forge** para provisionamento, configuração e gerenciamento do servidor;
-- **DigitalOcean** como infraestrutura de hospedagem;
-- servidor dedicado à aplicação Laravel;
-- banco de dados PostgreSQL gerenciado ou em instância separada;
-- workers de fila executando continuamente;
-- cache e sessões utilizando Redis;
-- HTTPS e domínio próprio;
-- backups automatizados;
-- monitoramento de aplicação e servidor;
-- escalabilidade vertical ou horizontal conforme o aumento de acessos.
-
-Nesse cenário, a aplicação não dependeria do ciclo de suspensão utilizado na hospedagem demonstrativa e teria recursos dimensionados para suportar um volume maior de requisições.
-
-A infraestrutura atual foi escolhida apenas para disponibilizar o projeto publicamente como portfólio, mantendo baixo custo de hospedagem.
-
-# Barbearia SaaS — Backend Laravel + Filament
-
-Backend de uma plataforma de gestão para barbearias, desenvolvido como projeto de portfólio.
-
-O projeto reúne:
-
-- painel administrativo em **Filament 3**
-- API REST para aplicativo/mobile
-- autenticação com **Laravel Sanctum**
-- arquitetura **multi-tenant**
-- gerenciamento de agendamentos
-- barbeiros e serviços
-- estoque e produtos
-- vendas e caixa
-- planos e assinaturas
-- dashboard e calendário
-- ambiente público de demonstração
-- integrações de pagamento presentes no código, mas não necessárias para a demonstração pública
-
-> Este projeto é apresentado como **portfólio técnico**. A versão pública foi preparada para navegação e demonstração das principais funcionalidades, e não deve ser tratada como um ambiente comercial de produção.
+> Este projeto é uma **demonstração de portfólio**. Alguns recursos sensíveis, principalmente pagamentos reais, ficam desativados na versão pública.
 
 ---
 
-## Demo online
+## Download do APK
 
-**Aplicação**
+A versão Android de demonstração é publicada através do **GitHub Releases**:
 
+https://github.com/Diogordo08/barber-mobile/releases
+
+Abra a release mais recente e baixe o arquivo `.apk`.
+
+> No Android, pode ser necessário permitir a instalação de aplicativos provenientes do navegador ou gerenciador de arquivos utilizado para abrir o APK.
+
+---
+
+## Backend utilizado
+
+A versão atual do aplicativo está integrada ao backend:
+
+```text
 https://barbearia-api-xxvv.onrender.com
+```
 
-**Conta de demonstração**
+API:
 
 ```text
-E-mail: demo@barbearia.app
-Senha: Demo@12345
+https://barbearia-api-xxvv.onrender.com/api
 ```
 
-A conta demo possui dados previamente cadastrados para facilitar a avaliação do sistema.
+Repositório do backend:
 
-### Importante sobre a demo
+https://github.com/buja23/barbearia-api
 
-A conta pública é protegida contra ações que poderiam quebrar a experiência para os próximos visitantes.
+### Primeiro acesso
 
-Algumas operações podem exibir:
+O backend público utiliza uma infraestrutura econômica destinada à demonstração do projeto. Após um período sem acessos, o primeiro carregamento pode levar alguns segundos enquanto o ambiente da aplicação é inicializado novamente.
 
-> Esta ação está desativada no ambiente demonstrativo.
-
-Isso é intencional.
-
-A demonstração prioriza:
-
-- navegação pelo sistema
-- visualização dos módulos
-- filtros e buscas
-- dashboard
-- agenda
-- calendário
-- serviços
-- barbeiros
-- estoque
-- vendas
-- planos
-- assinaturas
-
-Ações destrutivas ou sensíveis podem ser bloqueadas.
+Depois da inicialização, as requisições seguintes normalmente respondem com menor latência.
 
 ---
 
-# Principais tecnologias
+# Tecnologias
 
-## Backend
-
-- PHP 8.4
-- Laravel 11
-- Laravel Sanctum
-- PostgreSQL
-- Eloquent ORM
-
-## Painel administrativo
-
-- Filament 3
-- Livewire 3
-- Filament FullCalendar
-- Laravel Trend
-
-## Infraestrutura da demonstração
-
-- Docker
-- Apache
-- Render
-- PostgreSQL hospedado externamente
-
-## Outros pacotes presentes
-
-- Mercado Pago PHP SDK
-- Simple QR Code
-- PHP Pix
-- PHPUnit
+- React Native
+- Expo 54
+- Expo Router
+- TypeScript
+- React 19
+- Axios
+- AsyncStorage
+- NativeWind
+- Expo Camera
+- React Native WebView
+- Lucide React Native
 
 ---
 
-# Funcionalidades
+# Principais funcionalidades
 
-## Dashboard
+## Seleção de barbearia
 
-Apresenta informações resumidas da operação da barbearia, como dados de agendamentos, receitas e desempenho.
+Ao abrir o aplicativo, o usuário seleciona uma barbearia através de:
 
-## Agendamentos
+- código/slug digitado manualmente;
+- QR Code.
 
-Permite:
-
-- visualizar agendamentos
-- filtrar por situação e data
-- pesquisar clientes
-- selecionar barbeiro
-- selecionar serviço
-- consultar horários disponíveis
-- visualizar status
-- visualizar situação do pagamento
-- integrar os dados ao calendário
-
-A API também revalida barbeiro, serviço, barbearia e disponibilidade antes de criar um agendamento.
-
-## Barbeiros
-
-Gerenciamento dos profissionais vinculados à barbearia.
-
-## Serviços
-
-Cadastro e gerenciamento dos serviços oferecidos, incluindo preço e duração.
-
-## Produtos e estoque
-
-Controle de produtos da barbearia, estoque e movimentações relacionadas às vendas.
-
-## Vendas e caixa
-
-Registro de vendas e itens associados.
-
-O projeto contém fluxos de pagamento e baixa de estoque, mas a conta pública de demonstração possui proteções adicionais.
-
-## Planos e assinaturas
-
-Gerenciamento de planos de clientes e assinaturas.
-
-## Multi-tenant
-
-Cada barbearia funciona como um tenant independente.
-
-O sistema restringe os dados e relacionamentos de acordo com a barbearia ativa.
-
-A conta demo também é limitada especificamente ao tenant demonstrativo.
-
----
-
-# Modo de demonstração
-
-O projeto possui uma camada específica de proteção para a conta pública.
-
-Configuração:
-
-```env
-DEMO_MODE=true
-DEMO_EMAIL=demo@barbearia.app
-DEMO_TENANT_SLUG=barbearia-demo
-```
-
-Opcionalmente:
-
-```env
-DEMO_USER_ID=
-DEMO_TENANT_ID=
-```
-
-Quando informados, os IDs têm prioridade sobre e-mail e slug.
-
-A lógica central está em:
+Para a demonstração pública, o tenant utilizado é:
 
 ```text
-app/Support/DemoAccess.php
+barbearia-demo
 ```
 
-As proteções também são aplicadas em Resources do Filament, observers, middleware da API e fluxos sensíveis.
-
----
-
-# O que a conta demo NÃO pode fazer
-
-Para evitar que um visitante prejudique a experiência dos próximos usuários, determinadas operações são restringidas.
-
-Entre elas podem estar:
-
-- exclusão de registros protegidos
-- exclusões em massa
-- alteração de dados estruturais da barbearia
-- alteração das credenciais da conta demo
-- criação de outro tenant
-- mudanças críticas em assinaturas
-- operações financeiras reais
-- conexão/desconexão de contas de pagamento
-- acesso a outros tenants
-
-A API da conta demo também restringe operações de escrita protegidas.
-
----
-
-# Pagamentos e Mercado Pago
-
-O repositório contém código relacionado a:
-
-- PIX
-- Mercado Pago
-- OAuth
-- cartões
-- webhooks
-- pagamentos de assinatura
-
-Porém, **essas integrações não são requisito da demonstração pública**.
-
-Na conta demo:
-
-- nenhum pagamento real deve ser necessário
-- o PIX pode utilizar uma apresentação demonstrativa
-- ações financeiras sensíveis são protegidas
-- o usuário não precisa possuir credenciais do Mercado Pago
-
-O código foi mantido para demonstrar a arquitetura e os fluxos desenvolvidos.
-
-## Possíveis erros relacionados a pagamentos
-
-Se o projeto for executado fora da conta demo e alguém tentar utilizar Mercado Pago sem configurar as credenciais necessárias, os fluxos de pagamento podem falhar.
-
-Variáveis existentes:
-
-```env
-MERCADOPAGO_ACCESS_TOKEN=
-MERCADOPAGO_PUBLIC_KEY=
-MERCADO_PAGO_WEBHOOK_SECRET=
-
-MP_APP_ID=
-MP_APP_SECRET=
-```
-
-Para avaliar o portfólio, **não é necessário configurar essas variáveis**.
-
----
-
-# API REST
-
-Todas as rotas abaixo utilizam o prefixo:
-
-```text
-/api
-```
-
-## Autenticação
-
-### Registrar usuário
-
-```http
-POST /api/register
-```
-
-Campos principais:
-
-```json
-{
-  "name": "Nome",
-  "email": "email@exemplo.com",
-  "password": "senha",
-  "password_confirmation": "senha"
-}
-```
-
-### Login
-
-```http
-POST /api/login
-```
-
-```json
-{
-  "email": "email@exemplo.com",
-  "password": "senha"
-}
-```
-
-Retorna token Sanctum.
-
-### Usuário autenticado
-
-```http
-GET /api/user
-```
-
-Requer:
-
-```http
-Authorization: Bearer TOKEN
-```
-
-### Atualizar perfil
-
-```http
-PUT /api/user
-```
-
-Permite atualizar dados do usuário e, quando enviados corretamente, senha e e-mail.
-
-### Logout
-
-```http
-POST /api/logout
-```
-
-Revoga o token atual.
-
----
-
-# API pública da barbearia
-
-## Dados da barbearia
+O aplicativo consulta:
 
 ```http
 GET /api/{slug}
 ```
 
-Exemplo:
+e mantém a barbearia selecionada no armazenamento local.
 
-```text
-/api/barbearia-demo
-```
+---
 
-## Planos
+## Autenticação
+
+O app utiliza autenticação via **Laravel Sanctum**.
+
+Fluxos disponíveis:
 
 ```http
-GET /api/{slug}/plans
+POST /api/register
+POST /api/login
+POST /api/logout
+GET  /api/user
+PUT  /api/user
+```
+
+Após o login, o backend retorna um `access_token`.
+
+O aplicativo:
+
+1. armazena o token com AsyncStorage;
+2. configura o header `Authorization`;
+3. recupera a sessão ao reabrir o app;
+4. limpa a sessão automaticamente quando recebe `401`;
+5. tenta revogar o token no logout sem impedir a saída local caso a rede esteja indisponível.
+
+Exemplo:
+
+```http
+Authorization: Bearer TOKEN
+Accept: application/json
+```
+
+---
+
+# Agendamentos
+
+O fluxo principal do aplicativo é:
+
+```text
+Selecionar serviço
+        ↓
+Selecionar profissional
+        ↓
+Selecionar data
+        ↓
+Consultar horários disponíveis
+        ↓
+Selecionar horário
+        ↓
+Confirmar agendamento
+        ↓
+Tela de confirmação
+        ↓
+Agenda / Histórico
 ```
 
 ## Serviços
@@ -393,26 +160,12 @@ GET /api/{slug}/barbers
 GET /api/{slug}/slots
 ```
 
-Parâmetros principais:
+Parâmetros:
 
 ```text
 date
 barber_id
 service_id
-```
-
-O backend valida se barbeiro e serviço pertencem à barbearia do slug informado.
-
----
-
-# API de agendamentos
-
-Requer autenticação Sanctum.
-
-## Listar agendamentos
-
-```http
-GET /api/appointments
 ```
 
 ## Criar agendamento
@@ -421,38 +174,44 @@ GET /api/appointments
 POST /api/appointments
 ```
 
-Campos principais:
+Payload principal:
 
 ```json
 {
   "barber_id": 1,
   "service_id": 1,
-  "scheduled_at": "2026-09-28 15:00:00",
-  "client_phone": "18999999999"
+  "scheduled_at": "2026-09-28 15:30:00"
 }
 ```
 
-Antes de salvar, o backend verifica:
+O backend revalida barbearia, barbeiro, serviço, disponibilidade e conflitos de horário.
 
-- tenant
-- barbeiro
-- serviço
-- disponibilidade
-- conflitos de horário
+---
 
-Combinações inválidas ou horários indisponíveis podem retornar:
+# Meus agendamentos
 
-```text
-422 Unprocessable Entity
+A tela de agenda possui duas visualizações:
+
+- **Próximos**
+- **Histórico**
+
+Endpoint:
+
+```http
+GET /api/appointments
 ```
 
-Slug inexistente pode retornar:
+Status suportados:
 
 ```text
-404 Not Found
+pending
+confirmed
+completed
+canceled
+no_show
 ```
 
-## Cancelar agendamento
+Cancelamento:
 
 ```http
 DELETE /api/appointments/{id}
@@ -460,269 +219,141 @@ DELETE /api/appointments/{id}
 
 ---
 
-# API de assinaturas
+# Perfil
 
-## Assinatura atual
+A área de perfil permite visualizar e editar os dados do usuário.
+
+Endpoint:
 
 ```http
-GET /api/user/subscription
+PUT /api/user
 ```
 
-## Criar assinatura
+O estado atualizado também é persistido localmente para manter a interface sincronizada após a edição.
+
+---
+
+# Planos e assinaturas
+
+O aplicativo possui telas para listar planos, mostrar assinatura ativa, acompanhar utilização e visualizar validade.
+
+Endpoints relacionados:
 
 ```http
+GET  /api/{slug}/plans
+GET  /api/user/subscription
 POST /api/subscribe
-```
-
-## Cancelar assinatura
-
-```http
 POST /api/subscribe/cancel
 ```
 
-Os endpoints existem no projeto, mas fluxos financeiros externos não são necessários para a avaliação da versão de portfólio.
+---
+
+# Pagamentos
+
+O código do projeto contém implementação relacionada ao Mercado Pago, incluindo suporte a PIX, cartão, WebView, Mercado Pago Bricks, polling de pagamento e chave pública por barbearia.
+
+Porém, **pagamentos reais estão desativados na versão pública de portfólio**.
+
+Na versão demonstrativa:
+
+- o botão de assinatura não inicia pagamento real;
+- o checkout do Mercado Pago não é aberto;
+- não há polling de pagamento;
+- não é exigida chave pública do Mercado Pago;
+- a interface informa que pagamentos estão desativados.
+
+O código foi preservado no repositório para demonstrar a arquitetura desenvolvida.
 
 ---
 
-# Suporte
+# Conta demonstrativa e ações protegidas
 
-```http
-POST /api/support/report
-```
+O backend possui proteções específicas para o ambiente demonstrativo.
 
-Tipos aceitos:
-
-```text
-bug
-suggestion
-other
-```
-
----
-
-# Rate limiting
-
-A API possui limites de requisição em diferentes grupos.
-
-Entre as respostas que um cliente deve estar preparado para tratar:
-
-```text
-401 Unauthorized
-403 Forbidden
-404 Not Found
-422 Unprocessable Entity
-429 Too Many Requests
-```
-
-Na conta demo, algumas operações protegidas retornam `403`.
-
----
-
-# Instalação local
-
-## Requisitos
-
-- PHP 8.4+
-- Composer
-- PostgreSQL ou banco compatível configurado
-- extensões PHP necessárias ao Laravel e ao PostgreSQL
-- Node.js/NPM apenas caso queira recompilar assets
-
-Clone:
-
-```bash
-git clone https://github.com/buja23/barbearia-api.git
-cd barbearia-api
-```
-
-Instale as dependências:
-
-```bash
-composer install
-```
-
-Crie o `.env`:
-
-```bash
-cp .env.example .env
-```
-
-Gere a chave:
-
-```bash
-php artisan key:generate
-```
-
-Configure o banco no `.env`.
-
-Depois:
-
-```bash
-php artisan migrate
-```
-
-Para popular o ambiente demonstrativo:
-
-```bash
-php artisan db:seed --class=DemoSeeder
-```
-
-Crie o link de storage:
-
-```bash
-php artisan storage:link
-```
-
-Execute:
-
-```bash
-php artisan serve
-```
-
----
-
-# Ambiente local e `.env.example`
-
-O `.env.example` contém valores genéricos e deve ser adaptado ao ambiente utilizado.
-
-A demonstração hospedada utiliza configuração diferente da configuração local padrão.
-
-Não copie credenciais reais para o repositório.
-
-Nunca versione:
-
-```text
-.env
-tokens
-senhas
-segredos de webhook
-chaves privadas
-credenciais de banco
-```
-
----
-
-# Docker
-
-O projeto possui `Dockerfile` baseado em:
-
-```text
-php:8.4-apache
-```
-
-A imagem instala extensões utilizadas pelo projeto, configura o Apache para servir `/public` e executa Composer durante o build.
-
-No ambiente demonstrativo atual, o startup executa:
-
-```bash
-php artisan optimize:clear
-php artisan storage:link
-php artisan migrate --force
-php artisan db:seed --class=DemoSeeder --force
-php artisan optimize
-```
-
-e então inicia o Apache.
-
----
-
-# Reset automático da demo
-
-Na configuração atual do deploy, o `DemoSeeder` é executado durante a inicialização do container.
-
-Isso significa que reinicializações podem restaurar os dados demonstrativos.
-
-Para este portfólio, esse comportamento é intencional porque ajuda a manter a conta pública utilizável depois que diferentes visitantes acessam o sistema.
-
-Consequências:
-
-- alterações feitas por visitantes podem não ser permanentes
-- dados da demo podem voltar ao estado inicial
-- IDs de registros demonstrativos podem mudar
-- não utilize esse comportamento como estratégia para um ambiente comercial real
-
----
-
-# Deploy no Render
-
-A demonstração utiliza container Docker.
-
-Durante o primeiro acesso após um período de inatividade, o serviço pode demorar mais para responder.
-
-Se a primeira abertura estiver lenta:
-
-1. aguarde alguns segundos
-2. atualize a página
-3. tente novamente
-
-Isso não significa necessariamente que a aplicação esteja com erro.
-
----
-
-# Erros e limitações conhecidas
-
-## 1. Mercado Pago
-
-Fluxos reais de Mercado Pago não fazem parte da homologação da demo.
-
-Sem credenciais, determinadas funcionalidades financeiras destinadas a contas reais podem não funcionar.
-
-A conta demo foi preparada para não depender desses fluxos.
-
-## 2. Dados da demo são restaurados
-
-O seed demonstrativo pode ser executado novamente durante reinicializações.
-
-Não espere persistência permanente das alterações realizadas na conta pública.
-
-## 3. Hospedagem da demonstração
-
-Por ser uma demonstração hospedada em infraestrutura econômica/gratuita, o primeiro acesso pode ser mais lento.
-
-## 4. Escrita pela API usando a conta demo
-
-A conta demo possui restrições adicionais.
-
-É esperado receber:
+Dependendo da conta utilizada, ações de escrita podem retornar:
 
 ```text
 403 Forbidden
 ```
 
-ao tentar determinadas operações de escrita.
+Nesses casos, o aplicativo apresenta:
 
-## 5. Validações de agendamento
+> Esta ação não está disponível nesta conta demonstrativa.
 
-Um agendamento pode retornar `422` quando:
-
-- barbeiro não pertence à barbearia
-- serviço não pertence à barbearia
-- barbeiro e serviço pertencem a tenants diferentes
-- horário não está mais disponível
-- existe conflito de agenda
-- dados de entrada são inválidos
-
-Isso é comportamento esperado.
-
-## 6. Recuperação de senha e infraestrutura externa
-
-Recursos que dependem de e-mail, serviços externos ou infraestrutura adicional podem necessitar configuração própria no ambiente local.
-
-Eles não são necessários para explorar a conta pública de portfólio.
+Isso pode ocorrer em operações como alteração de perfil, criação ou cancelamento de agendamentos, assinaturas, suporte e outras ações protegidas pelo backend.
 
 ---
 
-# Segurança da demonstração
+# Tratamento de erros
 
-A versão pública possui proteções adicionais para evitar:
+A aplicação trata respostas comuns da API sem expor mensagens técnicas do Axios ao usuário.
 
-- exclusões destrutivas
-- troca das credenciais da demo
-- acesso entre tenants
-- modificação de configurações financeiras
-- alterações críticas no cenário demonstrativo
+## 401 — sessão expirada
 
-Essas restrições fazem parte do ambiente de apresentação e não representam necessariamente as permissões de uma conta real em uma implantação comercial.
+A sessão local é limpa e o usuário retorna ao fluxo de autenticação.
+
+## 403 — ambiente demonstrativo
+
+```text
+Esta ação não está disponível nesta conta demonstrativa.
+```
+
+## 404 — recurso não encontrado
+
+```text
+Barbearia não encontrada.
+```
+
+## 422 — validação
+
+Quando apropriado, o aplicativo exibe a mensagem retornada pelo backend.
+
+Exemplo:
+
+```text
+Este horário não está mais disponível. Escolha outro horário.
+```
+
+## 429 — limite de requisições
+
+```text
+Muitas tentativas em pouco tempo. Aguarde alguns instantes.
+```
+
+## Falha de conexão
+
+```text
+Não foi possível conectar ao servidor. Tente novamente.
+```
+
+---
+
+# QR Code
+
+O aplicativo utiliza `expo-camera` para leitura do QR Code da barbearia.
+
+O QR Code pode conter o slug, por exemplo:
+
+```text
+barbearia-demo
+```
+
+ou uma URL cujo último segmento corresponda ao slug da barbearia.
+
+---
+
+# Persistência local
+
+O aplicativo utiliza AsyncStorage para armazenar informações necessárias à experiência do usuário.
+
+Principais chaves:
+
+```text
+@BarberSaaS:user
+@BarberSaaS:token
+@BarberSaaS:shop
+@BarberSaaS:theme
+```
 
 ---
 
@@ -730,90 +361,230 @@ Essas restrições fazem parte do ambiente de apresentação e não representam 
 
 ```text
 app/
-├── Filament/
-│   ├── Pages/
-│   ├── Resources/
-│   └── Widgets/
-├── Http/
-│   ├── Controllers/
-│   ├── Middleware/
-│   ├── Requests/
-│   └── Resources/
-├── Models/
-├── Observers/
-├── Services/
-└── Support/
+├── (tabs)/
+│   ├── index.tsx
+│   ├── agenda.tsx
+│   ├── plans.tsx
+│   └── perfil.tsx
+├── checkout/
+├── _layout.tsx
+├── welcome.tsx
+├── login.tsx
+├── register.tsx
+├── new-appointment.tsx
+├── appointment-success.tsx
+└── my-plans.tsx
 
-config/
-database/
-resources/
-routes/
-tests/
-```
+src/
+├── contexts/
+│   ├── AuthContext.tsx
+│   └── ThemeContext.tsx
+├── services/
+│   ├── api.ts
+│   └── mocks.ts
+└── types/
 
-Arquivos importantes:
-
-```text
-routes/api.php
-routes/web.php
-app/Support/DemoAccess.php
-app/Observers/DemoProtectionObserver.php
-app/Services/PaymentService.php
-database/seeders/DemoSeeder.php
-Dockerfile
+assets/
 ```
 
 ---
 
-# Testes
+# Executando localmente
 
-O projeto possui testes de regressão para fluxos importantes, incluindo proteções da demonstração.
+## Requisitos
 
-Quando todas as dependências estiverem instaladas:
+- Node.js
+- npm
+- Expo
+- Android Studio, emulador ou dispositivo com Expo Go para testes móveis
+
+Clone:
 
 ```bash
-php artisan test
+git clone https://github.com/Diogordo08/barber-mobile.git
+cd barber-mobile
+```
+
+Instale as dependências:
+
+```bash
+npm install
+```
+
+Inicie o Expo:
+
+```bash
+npx expo start
 ```
 
 ou:
 
 ```bash
-composer test
+npm start
 ```
 
-Também é útil validar:
+Outros comandos:
 
 ```bash
-composer dump-autoload --optimize
-php artisan route:list
-php artisan config:cache
-php artisan route:cache
+npm run android
+npm run ios
+npm run web
 ```
 
 ---
 
-# Objetivo deste projeto
+# Verificações
 
-Este projeto foi desenvolvido para demonstrar conhecimentos em:
+TypeScript:
 
-- desenvolvimento backend com Laravel
-- APIs REST
-- autenticação
-- arquitetura multi-tenant
-- modelagem relacional
-- regras de negócio
-- dashboards administrativos
-- Filament e Livewire
-- controle de estoque
-- agenda e disponibilidade
-- integração entre backend e aplicativo
-- Docker e deploy
-- proteção de ambiente demonstrativo
-- integração com serviços externos
+```bash
+npx tsc --noEmit
+```
 
-O foco atual é **portfólio técnico**.
+Expo:
 
-A demonstração pública foi preparada para permitir que recrutadores e avaliadores explorem o sistema sem depender de configurações externas sensíveis.
+```bash
+npx expo-doctor
+```
+
+Build web:
+
+```bash
+npm run web
+```
+
+---
+
+# Gerando o APK
+
+O projeto utiliza **EAS Build**.
+
+Instale:
+
+```bash
+npm install -g eas-cli
+```
+
+Faça login:
+
+```bash
+eas login
+```
+
+Para gerar uma versão Android instalável:
+
+```bash
+eas build -p android --profile preview
+```
+
+O perfil `preview` deve utilizar:
+
+```json
+{
+  "android": {
+    "buildType": "apk"
+  }
+}
+```
+
+Após o build, publique o `.apk` em **GitHub Releases**.
+
+Não é recomendado versionar o APK diretamente no Git, pois builds Android podem ultrapassar o limite de tamanho de arquivos aceito em commits comuns pelo GitHub.
+
+---
+
+# Limitações conhecidas
+
+## Pagamentos
+
+Pagamentos reais estão desativados na versão pública.
+
+## Cold start
+
+A API hospedada pode levar alguns segundos no primeiro acesso após um período de inatividade.
+
+## Conta demo
+
+Algumas ações podem ser bloqueadas propositalmente pelo backend.
+
+## Câmera
+
+A leitura de QR Code depende de permissão do dispositivo e deve ser validada em Android/iOS.
+
+## Recursos externos
+
+Funcionalidades que dependem de serviços de terceiros podem exigir configuração adicional fora do ambiente demonstrativo.
+
+---
+
+# Validações realizadas
+
+Durante a preparação da versão de portfólio foram verificados:
+
+- TypeScript;
+- imports e variáveis;
+- configuração do Expo;
+- exportação web;
+- integração com a API publicada;
+- login;
+- consulta do usuário;
+- barbearia;
+- serviços;
+- barbeiros;
+- horários;
+- agenda;
+- assinatura;
+- tratamento de `403`;
+- logout;
+- rotas utilizadas pelo aplicativo.
+
+Antes de uma nova release, recomenda-se testar manualmente câmera, QR Code, persistência da sessão, logout offline, navegação, aparência e criação/cancelamento de agendamento com uma conta não demonstrativa.
+
+---
+
+# Objetivo do projeto
+
+Este aplicativo foi desenvolvido para demonstrar conhecimentos em:
+
+- React Native;
+- Expo;
+- TypeScript;
+- consumo de API REST;
+- autenticação Bearer Token;
+- persistência de sessão;
+- Axios e interceptors;
+- Expo Router;
+- integração mobile/backend;
+- fluxo de agendamentos;
+- arquitetura multi-tenant;
+- QR Code;
+- tratamento de estados e erros;
+- build Android;
+- integração com serviços externos.
+
+Arquitetura resumida:
+
+```text
+React Native / Expo
+        ↓
+Laravel REST API
+        ↓
+PostgreSQL
+        ↓
+Filament Admin
+```
+
+---
+
+# Repositórios
+
+## Aplicativo
+
+https://github.com/Diogordo08/barber-mobile
+
+## Backend
+
+https://github.com/buja23/barbearia-api
 
 ---
 
@@ -824,7 +595,3 @@ A demonstração pública foi preparada para permitir que recrutadores e avaliad
 GitHub:
 
 https://github.com/buja23
-
-Repositório:
-
-https://github.com/buja23/barbearia-api
